@@ -1,0 +1,17 @@
+#!/bin/bash
+
+list=$1
+home='/data/images/priming_2017'
+resDir='/data/analysis/brianne/priming_2017'
+tasks=('fp_results' 'fp_results_post')
+con='0005'
+  cd ${resDir}
+for task in ${tasks[*]}; do
+  echo ${task}
+  for subj in $(cat $list); do
+    #echo ${home}/${subj}/${task}/con_${con}.nii
+    if [ -e ${home}/${subj}/${task}/con_${con}.nii ] ; then
+      echo ${home}/${subj}/${task}/con_${con}.nii
+    fi
+  done
+done

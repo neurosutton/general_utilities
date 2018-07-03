@@ -11,8 +11,11 @@ ix = strfind(check{1,1},subj);
 if isempty(arrayfun(@(x) isempty(x),ix));
     ix = strfind(check{1,1},subj(1:3));
 end
+
+%% Define the project directory
 ix = ~cellfun('isempty',ix);
 if sum(ix) > 0;
+    % If there is an intervening folder, this condition will find the locate the common path up to that point.
     ix = find(ix==1);
     ix = (max(ix)); %finds the last instance
     proj_dir = fullfile(filesep,check{1,1}{1:ix-1});
@@ -41,8 +44,10 @@ end
 
 tmp = arrayfun(@(x) strfind(x.name,'brain'), t1_file, 'UniformOutput',false);
 t1_file = t1_file(find(cellfun(@isempty,tmp)));
+tmp = arrayfun(@(x) strfind(x.name,'Bias'), t1_file, 'UniformOutput',false);
+t1_file = t1_file(find(cellfun(@isempty,tmp)));
 
-val=cellfun(@(x) numel(x),{t1_file.name}); %compare the length of all the nii's
+val=cellfun(@(x) numel(x),t1_file.name); %compare the length of all the nii's
 
 t1_file =  t1_file(val==min(val));
 [t1_file] = t1_file.name; %partial name, can't use as output filepath

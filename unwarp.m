@@ -24,7 +24,7 @@ elseif trs < 2; %need to split out nii file with ",number_of_volume"
         selected_proc_files = selected_proc_files(5:end); %discards the first four scans
     end
     mean_img = rdir(strcat('mean*',',5')); %so the image isn't empty
-    
+
 else %individual files for the volumes exist and need to be loaded sequentially
     selected_proc_files = all_proc_files';
     mean_img = rdir(strcat('mean*')); %so the image isn't empty
@@ -51,33 +51,33 @@ unwarp_check = rdir(strcat(raw_dir,filesep,'u*nii'));
 if length(unwarp_check) < 1;
     savefile = [subj_dir,filesep,'unwarp_' subj '.mat'];
     matlabbatch{1}.spm.spatial.realignunwarp.data.scans = scan_set{1,1};
-%%
-matlabbatch{1}.spm.spatial.realignunwarp.data.pmscan = '';
-matlabbatch{1}.spm.spatial.realignunwarp.eoptions.quality = 0.9;
-matlabbatch{1}.spm.spatial.realignunwarp.eoptions.sep = 4;
-matlabbatch{1}.spm.spatial.realignunwarp.eoptions.fwhm = 5;
-matlabbatch{1}.spm.spatial.realignunwarp.eoptions.rtm = 0;
-matlabbatch{1}.spm.spatial.realignunwarp.eoptions.einterp = 2;
-matlabbatch{1}.spm.spatial.realignunwarp.eoptions.ewrap = [0 0 0];
-matlabbatch{1}.spm.spatial.realignunwarp.eoptions.weight = '';
-matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.basfcn = [12 12];
-matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.regorder = 1;
-matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.lambda = 100000;
-matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.jm = 0;
-matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.fot = [4 5];
-matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.sot = [];
-matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.uwfwhm = 4;
-matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.rem = 1;
-matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.noi = 5;
-matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.expround = 'Average';
-matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.uwwhich = [2 1];
-matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.rinterp = 4;
-matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.wrap = [0 0 0];
-matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.mask = 1;
-matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.prefix = 'u';
+% %%
+% matlabbatch{1}.spm.spatial.realignunwarp.data.pmscan = '';
+% matlabbatch{1}.spm.spatial.realignunwarp.eoptions.quality = 0.9;
+% matlabbatch{1}.spm.spatial.realignunwarp.eoptions.sep = 4;
+% matlabbatch{1}.spm.spatial.realignunwarp.eoptions.fwhm = 5;
+% matlabbatch{1}.spm.spatial.realignunwarp.eoptions.rtm = 0;
+% matlabbatch{1}.spm.spatial.realignunwarp.eoptions.einterp = 2;
+% matlabbatch{1}.spm.spatial.realignunwarp.eoptions.ewrap = [0 0 0];
+% matlabbatch{1}.spm.spatial.realignunwarp.eoptions.weight = '';
+% matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.basfcn = [12 12];
+% matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.regorder = 1;
+% matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.lambda = 100000;
+% matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.jm = 0;
+% matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.fot = [4 5];
+% matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.sot = [];
+% matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.uwfwhm = 4;
+% matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.rem = 1;
+% matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.noi = 5;
+% matlabbatch{1}.spm.spatial.realignunwarp.uweoptions.expround = 'Average';
+% matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.uwwhich = [2 1];
+% matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.rinterp = 4;
+% matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.wrap = [0 0 0];
+% matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.mask = 1;
+% matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.prefix = 'u';
      save(savefile, 'matlabbatch');
 
 %% Run the batch
-spm_jobman('run',matlabbatch) 
+spm_jobman('run',matlabbatch)
 disp('unwarping complete')
 end

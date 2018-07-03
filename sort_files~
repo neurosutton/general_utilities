@@ -1,0 +1,303 @@
+#!/bin/bash
+
+############################################################
+# sort_func_files will take the raw dicoms through initial #
+# processing to make and sort standardized directories for #
+# scans that have just been pulled over from the 3T server.#
+#                                                          #
+# For help with that process, try smbclient.               #
+#                                                          #
+# For first time use with a new study, one needs to edit   #
+# the options/variables noted below at approx L110         #
+#                                                          #
+# This script uses dcm2niix to convert the dicoms. The nii #
+# files are unzipped, if they match the sorting criteria,  #
+# and then briefly realigned with a MATLAB function. These #
+# estimates should always be verified manually.            #
+#                                                          #
+# Please note that there are minor modifications for the   #
+# bigkahuna, b/c of how dcm2niix runs                      #
+# Author: Brianne Mohl, PhD         Date: 8.3.2017         #
+############################################################
+
+prog=${0}
+proj=${1}
+subj=${2} #Bizarrely, if you enter an asterisk before the number, bash grabs the first ls instance automatically
+task=${3}
+hd=`which fslhd`
+nv=`which fslnvols`
+addpth="'/home/brianne/tools/general_utilities'" #acpc_detect is here
+
+if [[ ${hd} == "" ]] || [[ ${nv} == "" ]] ; then
+  echo "Problems defining FSL path"
+  exit
+else
+  if [[ ${1} == "" ]] ; then
+    echo "Usage: ${prog} project_dir_name subject_num (optional) task (optional)"
+    echo " e.g., ${prog} EXO              110.3.1                resting"
+    exit
+  else
+    echo "Will process dcm files for study: ${proj} ${subj}"
+  fi
+
+  #cd /home/data/images
+
+  home=`pwd | sed  s/${proj}.*//` #chops to everything before project name; increases flexibility
+  home=`echo ${home}${proj}` # builds back the path to what you want
+
+  if [[ ${2} == "" ]] ; then
+    subjs=($(ls -d ${home}/*/dicom )) # || ls -d ${home}/subjects/*/dicom)) #Searches two levels to find all subjects
+    echo ${subjs}
+  else
+    subjs=($(ls -d ${home}/*${subj}*/dicom )) # || ls -d ${home}/subjects/${subj}*/dicom)) #Searches two levels to find specific subject
+  fi
+  home=`echo ${subjs[0]} | rev | cut -d/ -f3- | rev` #intentionally redefine
+
+  echo "Found ${#subjs[@]} subject directories"
+################# Renaming directories #######################
+  for subj in "${subjs[@]}"; do
+    subj_dir=`echo ${subj}| rev | cut -d/ -f2- | rev` #to accomodate multiple, potential directory levels
+    oldName=`echo ${subj_dir} | rev | cut -d/ -f1 | rev`
+    if [[ $oldName == *"."* ]]; then
+      study=`echo ${oldName} | cut -d. -f1`
+      num=`echo ${oldName} | cut -d. -f2`
+      timept=`echo ${oldName} | cut -d. -f3`
+      if [ ! -z $timept ]; then
+        #Array
+        if [ $timept == "1" ] ; then
+          timeDict="a"
+        elif [ $timept == "2" ] ; then
+          timeDict="b"
+        elif [ $timept == "3" ] ; then
+          timeDict="c"
+        elif [ $timept == "4" ] ; then
+          timeDict="d"
+        fi
+        name=`echo ${study}${num}_${timept}` #The new name for the subject
+      else
+        name=`echo ${study}${num}` #Does not code any timepoint
+      fi
+
+      echo "New name is ${name,,}"
+      mv $subj_dir ${home}/${name,,}
+      subj_dir=`echo ${home}/${name,,}`
+    else
+      name=`echo ${oldName}` #Loop if the subject has already been converted
+    fi
+
+#################### Processing ##########################
+    echo "Working with ${subj_dir}"
+    if [ ! -d ${subj_dir}/raw_dir ] ; then
+      mkdir ${subj_dir}/raw_dir
+    fi
+    raw_dir=`echo ${subj_dir}/raw_dir`
+
+    #Run dcm2niix if the format is still dicom
+    if ls ${raw_dir}/*nii* 1> /dev/null 2>&1 ; then
+      echo "Skipping dcm conversion"
+    else
+      dcm2niix -o ${raw_dir} -f %p_%e_%4s_%t -z y ${subj_dir}/dicom  #will be zipped output for storage purposes.
+      rm ${subj_dir}/raw_dir/*json
+
+      #If want to clear dicom folder or dcm files, in futre editions
+      #echo "Cleaning up files."
+      #if [ find ${subj_dir}/dicom -name "*nii*" | wc  > 2 ] ; then
+      #find ${subj_dir}/dicom -name "*dcm" | xargs rm #The list is too long to simply remove.
+      #fi
+    fi
+
+    #Sort the gzip files
+    if [ -z ${task} ] ; then
+      if [ ${proj} == "EX_OBK" ] ; then
+        fileTypes=("ddisc" "fp")
+      elif [ ${proj} == "exw_2017" ] ; then
+        fileTypes=("ddisc" "rest" "fp" "t1" "asl")
+      elif [ ${proj} == "priming_2017" ] ; then
+        fileTypes=("t1" "rest" "fp")
+      elif [ ${proj} == "eats_shomaker" ] ; then
+        fileTypes=("t1" "rest" "fp")
+      elif [ ${proj} == "All_Files" ] ; then #Allie's
+      fileTypes=("rest")
+    elif [ ${proj} == "asl_testing" ]; then
+      fileTypes=("asl" "t1")
+    elif [ ${proj} == "asdx_2018" ] || [ ${proj} == "triangle_task" ] ; then
+      fileTypes=("triangle" "t1" "rest")
+    elif [ ${proj} == "ross_bch" ] ; then
+      fileTypes=("t1" "t2" ) #"rest")
+    else
+      fileTypes=("")
+    fi
+  else
+    fileTypes=${task}
+  fi
+
+  if [ $fileTypes == "" ] ; then
+    echo "Did not figure out which scans to process for $proj"
+    echo "Quitting"
+    exit
+  fi
+  #if [ ${proj} != "ross_bch" ] ; then
+  echo "Checking: ${fileTypes[@]}"
+  if [[ ${#fileTypes[@]} > 0 ]] ; then
+
+    for ft in "${fileTypes[@]}"; do
+      ###############################################################
+      # Might need to add here, if the study hasn't been added yet  #
+      ###############################################################
+      if  [ ${ft} == "ddisc" ] ; then
+        findName="dis"
+        nvols=189
+      elif [ ${ft} == "t1" ] ; then
+        findName="*mprage*p*"
+        #findName="*SPGR*"
+        nvols=1
+      elif [ ${ft} == "fp" ] ; then
+        findName="food"
+        nvols=172
+        #nvols=204
+      elif [ ${ft} == "rest" ] ; then
+        findName="rest"
+        nvols=300
+      elif [ ${ft} == "triangle" ] ; then
+        findName="Triangle"
+        nvols=336
+      elif [ ${ft} == "asl" ] ; then
+        findName="tgsecs"
+        nvols=1
+      else
+        findName=${ft}
+      fi
+      ######################  Quit editing  #########################
+
+      runs=( $(find ${raw_dir} -iname "*${findName}*nii*"))
+      if [[ ${#runs[@]} > 0 ]] ; then
+        #Check for the directory
+        echo ""
+        echo "Found ${#runs[@]} possible runs for ${ft}"
+        #Copy and unzip the nii
+
+        if [[ ${#runs[@]} == 1 ]] ; then
+          if ls ${subj_dir}/${ft}/*nii 1> /dev/null 2>&1 ; then
+            echo "${subj_dir} already copied"
+          else
+            echo "Finding correct file to copy for ${ft}:"
+
+            # if file size was dependable, use this.
+            #find ${subj_dir} -iname "*${ft}*nii*" -type f | xargs du | sort -n | head -n 1 | cut -d/ -f2`
+            mvFile=`find ${raw_dir} -iname "*${findName}*nii*" -type f | xargs du | tail -n1 | cut -f2 | rev | cut -d/ -f1 | rev`
+            nvol_mvFile=`fslnvols ${raw_dir}/${mvFile}`
+            echo "${mvFile} has ${nvol_mvFile} volumes"
+            if [[ ${nvols} -ne ${nvol_mvFile} ]] ; then
+              mvFile="" #Don't want to pull this one forward, because it doesn't have the right number of volumes (and may not be the sequence that is expected.
+            fi
+
+            if [[ ${mvFile} != "" ]] ; then
+              echo "Match!"
+              if [ ! -d ${subj_dir}/${ft} ] ; then
+                mkdir ${subj_dir}/${ft}
+              fi
+
+              mvFile=`echo ${raw_dir}/${mvFile}`
+              dt=`echo ${mvFile} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
+              series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+              ext=`echo ${mvFile} | cut -d. -f2-` #can be nii or nii.gz
+              #macdt=`echo ${mvFile} | rev |  cut -d. -f2- | rev | cut -d_ -f1`
+
+              cp ${mvFile} ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.${ext}
+              gunzip ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.${ext}
+              acpc=`ls ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.nii`
+              echo "matlab -nosplash -nodisplay -nojvm -r 'addpath($addpth); acpc_autodetect('$acpc'); quit'"
+              matlab -nosplash -nodisplay -nojvm -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
+
+            fi
+          fi
+
+        elif [ ${ft} == "asl" ] || [ ${ft} == "t1" ] ; then  #For multiple runs
+        if ls ${subj_dir}/${ft}/*nii 1> /dev/null 2>&1 ; then
+          echo "${subj_dir} already copied"
+        else
+          echo "Finding correct file to copy for ${ft}:"
+          if [ ${ft} == "asl" ] ; then
+            specName=`echo ${runs[-1]}` # to find the last one
+          else
+            echo ${runs}
+            specName=`echo ${runs[0]}`
+          fi
+
+          if [ ! -d ${subj_dir}/${ft} ] ; then
+            mkdir ${subj_dir}/${ft}
+          fi
+
+          echo $specName
+          #mac  dt=`echo ${specName} | rev |  cut -d. -f2- |cut -d/ -f1 | rev|  cut -d_ -f1`
+
+          dt=`echo ${specName} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
+          ext=`echo ${specName} | cut -d. -f2-`
+          series=`echo ${specName}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+          cp ${specName} ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.${ext}
+          gunzip ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.${ext}
+          acpc=`ls ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.nii`
+          echo "matlab -nosplash -nodisplay -nojvm -r 'addpath($addpth); acpc_autodetect('$acpc'); quit'"
+          matlab -nosplash -nodisplay -nojvm -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
+
+        fi
+      else
+
+        m=0 #initialize counter for matched runs
+        for (( j=0; ${j}<=${#runs[@]}; j++ )) ; do
+
+          # if file size was dependable, use this.
+          #find ${subj_dir} -iname "*${ft}*nii*" -type f | xargs du | sort -n | head -n 1 | cut -d/ -f2`
+
+          mvFile=`echo ${runs[${j}]}`
+          if  [[ ${mvFile} != "" ]] ; then
+            echo ${mvFile}
+            nvol_mvFile=`fslnvols ${mvFile}`
+            if [[ ${nvols} -ne ${nvol_mvFile} ]] ; then
+              mvFile="" #Don't want to pull this one forward, because it doesn't have the right number of volumes (and may not be the sequence that is expected.
+              echo "${mvFile} has ${nvol_mvFile} volumes"
+              echo "Double-check that the script is looking for the correct number of volumes."
+            fi
+
+            check=`fslhd ${mvFile} | grep 'Reference' `
+            if [ ! -z "$check" ] ; then
+              echo "Whoops! Found a motion reference file... scraping"
+              echo ""
+              mvFile=""
+            fi
+
+            if [[ ! -z "$mvFile" ]] ; then
+              n=$(($m+1))
+              echo "${ft} file ${n} is a match!"
+              if ls ${subj_dir}/${ft}_run${n}/*nii 1> /dev/null 2>&1 ; then
+                echo "${subj_dir} run${n} already copied"
+              else
+                if [ ! -d ${subj_dir}/${ft}_run${n} ] ; then
+                  echo "Creating ${ft}_run${n} directory"
+                  mkdir ${subj_dir}/${ft}_run${n}
+                fi
+
+                dt=`echo ${mvFile} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
+                series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+                ext=`echo ${mvFile} | cut -d. -f2-` #can be nii or nii.gz
+                cp ${mvFile} ${subj_dir}/${ft}_run${n}/${name,,}_${ft}run${n}_${series}_${dt}.${ext}
+                gunzip ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.${ext}
+                acpc=`ls ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.nii`
+                matlab -nosplash -nodisplay -nojvm -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
+              fi
+              m=${n}
+            fi
+          fi
+        done
+      fi
+    else
+      echo "File for ${ft} does not exist"
+      #rm -r ${subj_dir}/${ft} clean-up step
+    fi
+    echo "" #line break
+  done
+fi
+#fi
+done
+fi
+exit
