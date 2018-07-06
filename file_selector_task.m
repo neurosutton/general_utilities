@@ -13,21 +13,20 @@ switch nargin
                 subjName = textscan(pth_subjdirs{s},'%s','Delimiter','/'); %split the file path
                 sIx = strfind(subjName{1,1}, task); %figure out where the relative path should end, regardless of ancillary deeper directories
                 sIx = find(~cellfun('isempty',sIx)==1);
-                if ~isempty(sIx) % i.e., isn't identifying other tasks...
-                    if sum(sIx)>0
-                        subjName = subjName{1,1}(2:sIx-1);
-                        subj = subjName{end-1};
-                    else
-                        subjName = subjName{1,1}(2:end);
-                        subj = subjName{end};
-                    end
-                    subjPath = strtrim(sprintf('/%s',subjName{:}));
-                    
+                if isempty(sIx) % i.e., isn't identifying other tasks...
+                  subjName = subjName{1,1}(2:end);
+                  subj = subjName{end};
+                else
+                  subjName = subjName{1,1}(2:sIx-1);
+                  subj = subjName{end-1};
+                end
+                subjPath = strtrim(sprintf('/%s',subjName{:}));
+
                     tmp = rdir(char(strcat(subjPath,filesep,task,filesep,'*.nii'))); %rdir is a recursive dir routine available through MATLAB's site. much like ls in linux
                     if isempty(tmp()); %check alternate dir structure
                         tmp = rdir(char(strcat(subjPath,filesep,task,filesep,'*/*.nii')));
                     end
-                    
+
                     if ~isempty(tmp())
                         matchName = textscan(tmp(1,1).name,'%s','Delimiter','/');
                         mNix = strfind(matchName{:},subj);
@@ -38,12 +37,11 @@ switch nargin
                         rawDir = matchName{1,1}{rIx};
                         pth_taskdirs(t).fileDirs{s} = taskDir; %output path to task dir for each subj
                     end
-                end
             end
             pth_taskdirs(t).rawDir = rawDir;
-            
+
         end
-        
+
     otherwise %Generates task and subj list through selection in the GUI.
         disp('And what are we analyzing today?');
         if nargin < 1
@@ -59,7 +57,7 @@ switch nargin
             firstSubj = subjName{1,1}{end}; %for indexing to locate folder names
             cd(tmpSubjs{1,1});
             taskTmp = cellstr(spm_select([1,Inf],'dir','Select task directories to process','',pwd));
-            
+
             if isempty(taskTmp)
                 disp('No one selected. Exiting')
                 return
@@ -75,19 +73,19 @@ switch nargin
                         fprintf('\nTask:%s\n',task);
                         pth_taskdirs(tt).fileDirs = repmat({''},length(tmpSubjs),1); %preallocate
                         pth_taskdirs(tt).task = task;
-                        
+
                         for ss = 1:length(tmpSubjs);
                             subj = textscan(tmpSubjs{ss},'%s','Delimiter','/');
                             subj = subj{1,1}{end};
                             fprintf('Searching %s\n', subj);
                             niiFile = strcat(tmpSubjs{ss},filesep,task,filesep,'*.nii');
                             tmp = rdir(niiFile);
-                            
+
                             if isempty(tmp);
                                 disp('Checking another level')
                                 tmp = rdir(strcat(tmpSubjs{ss},filesep,task,filesep,'*/*.nii'));
                             end
-                            
+
                             if ~isempty(tmp);
                                 matchName = textscan(tmp(1,1).name,'%s','Delimiter','/');
                                 mNix = strfind(matchName{:},subj);

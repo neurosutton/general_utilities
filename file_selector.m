@@ -1,4 +1,5 @@
 function [cwd, pth_subjdirs, subjList] = file_selector(subjs)
+
 disp('Welcome to the automatic file finder. Selecting your player!');
 %% Finds the top level of study
 if nargin < 1
@@ -20,11 +21,12 @@ if nargin < 1
         subjList{tt} = tmp{1,1}{end};
         pth_subjdirs{tt} = strcat(filesep,fullfile(tmp{1,1}{1:end})); %otherwise loops through the subject multiple times
     end
+         pth_subjdirs = unique(pth_subjdirs);
 else
-    cwd = glob([pwd,filesep,'*',subjs]);
-    if isempty(cwd)
-        try strfind(pwd,subjs)
-            cwd = glob(pwd); % puts it in the same data type format
+    cwd = strip(glob([pwd,filesep,'*',subjs]),'right',filesep);
+    if isempty(cwd);
+        try strfind(pwd,subjs);
+            cwd = strip(glob(pwd),'right',filesep);
         catch
             disp('Could not identify the correct directory')
         end
@@ -65,4 +67,5 @@ else
         subjList{tt} = tmp{1,1}{end-1};
         pth_subjdirs{tt} = strcat(filesep,fullfile(tmp{1,1}{1:end-1})); %otherwise loops through the subject multiple times
     end
+         pth_subjdirs = unique(pth_subjdirs);
 end
