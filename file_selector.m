@@ -16,11 +16,11 @@ if nargin < 1
 
     cd(cwd);
     disp('Choose your vic..., er, um, participant(s).');
-    [pth_subjdirs,sts] = cellstr(spm_select([1,Inf],'dir','Select subject directories to process','',pwd));
+    [pth_subjdirs,sts] = spm_select([1,Inf],'dir','Select subject directories to process','',pwd);
     if sts == 0
       return
-    end    
-    pth_subjdirs = unique(pth_subjdirs);
+    end
+    pth_subjdirs = unique(cellstr(pth_subjdirs));
     %% Create list of subjects (without duplicates)
     for tt=1:length(pth_subjdirs)
         tmp = textscan(pth_subjdirs{tt},'%s','Delimiter',filesep);
