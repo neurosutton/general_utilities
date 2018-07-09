@@ -46,8 +46,10 @@ function [subj_dir, subj_file, file_ext] = locate_scan_file(modality,subj)
         catch
           fprintf('Cannot auto-detect %s, please select the file.\n',modality)
           pmpt = fprintf('Select the first persons %s file',modality);
-          scan_file = cellstr(spm_select([1,Inf],'file',pmpt,'',pwd));
-
+          [scan_file,sts] = cellstr(spm_select([1,Inf],'file',pmpt,'',pwd));
+          if sts == 0
+            return
+          end
         end
       end
     end

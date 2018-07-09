@@ -4,8 +4,11 @@ disp('Welcome to the automatic file finder. Selecting your player!');
 %% Finds the top level of study
 if nargin < 1
     disp('Begin with the root directory of the study.');
-    cwd = spm_select(1,'dir','Select root directory for studies',...
+    [cwd,sts] = spm_select(1,'dir','Select root directory for studies',...
         '',pwd);
+        if sts == 0
+          return
+        end
     if isempty(cwd)
         disp('Exiting');
         return
@@ -13,7 +16,10 @@ if nargin < 1
 
     cd(cwd);
     disp('Choose your vic..., er, um, participant(s).');
-    pth_subjdirs = cellstr(spm_select([1,Inf],'dir','Select subject directories to process','',pwd));
+    [pth_subjdirs,sts] = cellstr(spm_select([1,Inf],'dir','Select subject directories to process','',pwd));
+    if sts == 0
+      return
+    end    
     pth_subjdirs = unique(pth_subjdirs);
     %% Create list of subjects (without duplicates)
     for tt=1:length(pth_subjdirs)

@@ -45,7 +45,10 @@ switch nargin
     otherwise %Generates task and subj list through selection in the GUI.
         disp('And what are we analyzing today?');
         if nargin < 1
-            tmpSubjs = cellstr(spm_select([1,Inf],'dir','Select subject directories to process','',pwd));
+            [tmpSubjs,sts] = cellstr(spm_select([1,Inf],'dir','Select subject directories to process','',pwd));
+            if sts == 0
+              return
+            end
         else
             tmpSubjs = pth_subjdirs;
         end
