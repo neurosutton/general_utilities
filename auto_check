@@ -1,0 +1,37 @@
+#!/bin/bash
+
+##############################################################
+# Purpose: Automatically detect uploaded scans, copy them to #
+# Big Kahuna, and begin preprocessing.                       #
+# Author: Brianne Sutton, PhD                                #
+# Date: July 2018                                            #
+##############################################################
+
+pswd=`cat ~/.key`
+tmp_mnt='/mnt/threetbrain'
+
+#Create a dictionary of the directories
+declare -A dir_dict
+dir_dict=(["Legget_ASDX"]="asdx" ["Legget_EXO"]='exobk' ["Legget_Priming"]='priming' ["Legget_TRN"]='trn')
+
+
+sudo mount -t cifs -o username=mruser,password=${pswd} //140.226.17.16/Y ${tmp_mnt}
+
+for dk in ${!dir_dict[@]}; do
+  echo 'Checking' ${dk}
+  find ${tmp_mnt}/${dk} -newermt '1 week ago' -type d -print
+done
+sudo umount ${tmp_mnt}
+
+
+
+#preproc_fmri(ver, templates, subjs, taskArray, settings_dict)
+
+#subj
+#task_list
+
+#matlab -nosplash -nodesktop -nojvm -r;
+#"in_set = containers.Map({'art'},[1]);
+#addpath('/usr/local/MATLAB/tools/fmri_processing');
+#preproc_fmri(12,'',$subj,{$task_list},in_set);
+#quit"
