@@ -44,10 +44,10 @@ else
     echo "Will process dcm files for study: ${proj} ${subj}"
   fi
 
-  #cd /home/data/images
+ cd /home/data/images
 
   home=`pwd | sed  s/${proj}.*//` #chops to everything before project name; increases flexibility
-  home=`echo ${home}${proj}` # builds back the path to what you want
+  home=`echo ${home}/${proj}` # builds back the path to what you want
 
   if [[ ${2} == "" ]] ; then
     subjs=($(ls -d ${home}/*/dicom )) # || ls -d ${home}/subjects/*/dicom)) #Searches two levels to find all subjects
@@ -88,6 +88,7 @@ else
     else
       name=`echo ${oldName}` #Loop if the subject has already been converted
     fi
+      echo ${name,,} > ${home}/tmp.txt #Useful for grabbing the output of this rename for other single-subject scripts, in lieu of an argout in bash
 
 #################### Processing ##########################
     echo "Working with ${subj_dir}"
@@ -128,11 +129,12 @@ else
       fileTypes=("rest")
     elif [ ${proj} == "asl_testing" ]; then
       fileTypes=("asl" "t1")
-    elif [ ${proj} == "asdx_2018" ] || [ ${proj} == "triangle_task" ] ; then
+    elif [ ${proj} == "asdx_2018" ] || [ ${proj} == "triangle" ] ; then
       fileTypes=("triangle" "t1" "rest")
     elif [ ${proj} == "ross_bch" ] ; then
       fileTypes=("t1" "t2" ) #"rest")
     else
+      echo "******Project directory not previously defined in the script*****"
       fileTypes=("")
     fi
   else
@@ -154,25 +156,25 @@ else
       ###############################################################
       # Might need to add here, if the study hasn't been added yet  #
       ###############################################################
-      if  [ ${ft} == "ddisc" ] ; then
+      if  [[ ${ft} == "ddisc" ]] ; then
         findName="dis"
         nvols=189 # Length of scan corresponding to the task. Allows the script
         # to check that it is only copying complete runs.
-      elif [ ${ft} == "t1" ] ; then
+      elif [[ ${ft} == "t1" ]] ; then
         findName="*mprage*p*"
         #findName="*SPGR*"
         nvols=1
-      elif [ ${ft} == "fp" ] ; then
+      elif [[ ${ft} == "fp" ]] ; then
         findName="food"
         nvols=172
         #nvols=204
-      elif [ ${ft} == "rest" ] ; then
+      elif [[ ${ft} == "rest" ]] ; then
         findName="rest"
         nvols=300
-      elif [ ${ft} == "triangle" ] ; then
+      elif [[ "${ft}" == "triangle" ]] ; then
         findName="Triangle"
         nvols=336
-      elif [ ${ft} == "asl" ] ; then
+      elif [[ "${ft}" == "asl" ]] ; then
         findName="tgsecs"
         nvols=1
       else
@@ -202,7 +204,7 @@ else
               mvFile="" #Don't want to pull this one forward, because it doesn't have the right number of volumes (and may not be the sequence that is expected.
             fi
 
-            if [[ ${mvFile} != "" ]] ; then
+            if [[ "${mvFile}" != "" ]] ; then
               echo "Match!"
               if [ ! -d ${subj_dir}/${ft} ] ; then
                 mkdir ${subj_dir}/${ft}
@@ -217,8 +219,8 @@ else
               cp ${mvFile} ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.${ext}
               gunzip ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.${ext}
               acpc=`ls ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.nii`
-              echo "matlab -nosplash -nodisplay -nojvm -r 'addpath($addpth); acpc_autodetect('$acpc'); quit'"
-              matlab -nosplash -nodisplay -nojvm -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
+              echo "matlab -nosplash -nodisplay -r 'addpath($addpth); acpc_autodetect('$acpc'); quit'"
+              matlab -nosplash -nodisplay -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
 
             fi
           fi
@@ -248,8 +250,8 @@ else
           cp ${specName} ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.${ext}
           gunzip ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.${ext}
           acpc=`ls ${subj_dir}/${ft}/${name,,}_${ft}_${series}_${dt}.nii`
-          echo "matlab -nosplash -nodisplay -nojvm -r 'addpath($addpth); acpc_autodetect('$acpc'); quit'"
-          matlab -nosplash -nodisplay -nojvm -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
+          echo "matlab -nosplash -nodisplay -r 'addpath($addpth); acpc_autodetect('$acpc'); quit'"
+          matlab -nosplash -nodisplay -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
 
         fi
       else
@@ -294,7 +296,7 @@ else
                 cp ${mvFile} ${subj_dir}/${ft}_run${n}/${name,,}_${ft}run${n}_${series}_${dt}.${ext}
 		gunzip ${subj_dir}/${ft}_run${n}/${name,,}_${ft}run${n}_${series}_${dt}.${ext}
 		acpc=`ls ${subj_dir}/${ft}_run${n}/${name,,}_${ft}run${n}_${series}_${dt}.nii`
-                matlab -nosplash -nodisplay -nojvm -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
+                matlab -nosplash -nodisplay -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
               fi
               m=${n}
             fi

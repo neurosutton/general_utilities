@@ -1,4 +1,6 @@
 function [scan_files] = gather_sw_files(subj_pth,taskArray)
+% Purpose: Make a list of smoothed files available to wrapper scripts
+
   prefix = 's6w';
   for t = 1: length(taskArray)
     locateImg = [subj_pth,filesep,taskArray{t},'*',filesep,[prefix,'*.nii']];
