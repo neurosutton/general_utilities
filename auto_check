@@ -22,6 +22,8 @@ declare -A dir_dict
 dir_dict=(["Legget_ASDX"]="asdx" ["Legget_EXO"]='exobk' ["Legget_Priming"]='priming' ["Legget_TRN"]='trn')
 declare -A task_dict
 task_dict=(['asdx']="{'triangle'}" ['exobk']="{'fp_run1' 'fprun2' }" ['priming']="{'fp_run1' 'fprun2' 'priming'}" ['trn']="{'triangle'}")
+dir_dict=(["Legget_ASDX"]="asdx")
+task_dict=(['asdx']="{'triangle'}")
 
 mount -t cifs -o username=mruser,password=${pswd} //140.226.17.16/Y ${tmp_mnt}
 
@@ -34,11 +36,14 @@ for dk in "${!dir_dict[@]}"; do
   files=`find ${tmp_mnt}/${dk} -maxdepth 1 -newermt '1 week ago' -type d`
   for f in ${files[@]}; do
     if [[ "${f}" != "${tmp_mnt}/${dk}" ]] ; then
-      rsync -vrz ${f} ${dest_dir} # Use rsync to reduce accidental re-copying.
+      #rsync -vrz ${f} ${dest_dir} # Use rsync to reduce accidental re-copying.
       name=`echo ${f} | rev | cut -d/ -f1 | rev`
       echo ${name} >> ${dest_dir}/subj_to_proc.txt # Send the new, lowercase name to a text file to make the next process easier.
     fi
   done
+  echo "Changing permissions for ${dest_dir}"
+  chmod 775 -R ${dest_dir}
+  chgrp users -R ${dest_dir}
 done
 umount -l ${tmp_mnt}
 

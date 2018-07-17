@@ -117,25 +117,26 @@ else
 
     #Sort the gzip files
     if [ -z ${task} ] ; then
-      if [ ${proj} == "EX_OBK" ] ; then
+      if [ ${proj} == "exobk" ] ; then
         fileTypes=("ddisc" "fp")
-      elif [ ${proj} == "exw_2017" ] ; then
+      elif [ ${proj} == "exw" ] ; then
         fileTypes=("ddisc" "rest" "fp" "t1" "asl")
-      elif [ ${proj} == "priming_2017" ] ; then
+      elif [ ${proj} == "priming" ] ; then
         fileTypes=("t1" "rest" "fp")
       elif [ ${proj} == "eats_shomaker" ] ; then
         fileTypes=("t1" "rest" "fp")
       elif [ ${proj} == "All_Files" ] ; then #Allie's
-      fileTypes=("rest")
+        fileTypes=("rest")
     elif [ ${proj} == "asl_testing" ]; then
       fileTypes=("asl" "t1")
-    elif [ ${proj} == "asdx_2018" ] || [ ${proj} == "triangle" ] ; then
+    elif [ ${proj} == "asdx" ] || [ ${proj} == "trn" ] ; then
       fileTypes=("triangle" "t1" "rest")
     elif [ ${proj} == "ross_bch" ] ; then
       fileTypes=("t1" "t2" ) #"rest")
     else
       echo "******Project directory not previously defined in the script*****"
-      fileTypes=("")
+      echo "Quiting."
+      exit
     fi
   else
     fileTypes=${task}
