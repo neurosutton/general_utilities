@@ -24,11 +24,11 @@ end
 
 %% Select images
 if ~exist('images','var')
-    imglist=spm_select(Inf,'image','Choose MRI you want to set AC-PC');
+    imglist=spm_select([1,Inf],'image','Choose MRI you want to set AC-PC');
 else
     if isdir(images)
         disp('Reorienting the whole study.')
-        imglist = glob(strcat(images, filesep, '*/*/*nii')); 
+        imglist = glob(strcat(images, filesep, '*/*/*nii'));
     else
         imglist = cellstr(images);
     end
@@ -40,7 +40,7 @@ for i=1:size(imglist,1)
     img = char(strrep(deblank(imglist(i,:)),",1",""))
     [subjDir subjImg ext] = fileparts(img);
     touchFile = [subjDir, filesep, 'touch_acpc.txt'];
-    
+
     %% Decide what kind of scan is being processed
     [projDir scan_type] = fileparts(subjDir);
     if strcmp(lower(scan_type), 't1') || strcmp(lower(scan_type), 'anat')
@@ -50,11 +50,11 @@ for i=1:size(imglist,1)
         epiPath = 'yes';
         template=[spmDir filesep 'canonical/EPI.nii']; %avg152T2
     end
-    
+
     standardTemplate=spm_vol(template);
     checkList = [];
     cd (subjDir)
-    
+
     %% Reassign the center of the FOV as the ACPC, then adjust for average displacement per MR recording site.
     if ~exist (touchFile, 'file') && exist ('anatPath','var')
         %         copyfile(img, [trial,subjImg, ext]);
@@ -66,7 +66,7 @@ for i=1:size(imglist,1)
         if exist(oldmat, 'file') %eliminates previous re-orientations that may not be overwritten, but rather multiplied
             delete(oldmat);
         end
-        
+
         if isnan(inputImg(1).mat)
             fclose(fopen('unable2process.txt','w'));
         else
@@ -82,7 +82,7 @@ for i=1:size(imglist,1)
             elseif inputImg(1).dim(1) == 90
                 update_hdr(inputImg(1), 10, 0);
            elseif inputImg(1).dim(1) == 96
-                update_hdr(inputImg(1), 10, 0);  
+                update_hdr(inputImg(1), 10, 0);
             elseif  inputImg(1).dim(1) == 176
                 update_hdr(inputImg(1), 15, 5); %[88, 143, 133]
             elseif  inputImg(1).dim(1) ==   225
@@ -97,7 +97,7 @@ for i=1:size(imglist,1)
                 disp('');
             end
         end
-        
+
     elseif ~exist (touchFile, 'file') && exist ('epiPath','var')
         imgs = [subjDir, filesep, subjImg, ext];
         imgList = spm_vol(imgs);
@@ -107,13 +107,13 @@ for i=1:size(imglist,1)
             update_hdr(imgList(1), 2,-3);
             [newMat] =update_hdr_coreg(imgList(1), standardTemplate,'none');
             fprintf('May take awhile... %d volumes\n\n', length(imgList));
-            
+
             for i = 2:length(imgList)
                 num=int2str(i);
                 spm_get_space(char(strcat(imgList(1).fname,",",num)), newMat); %Must include the index via the strcat or the mat is only applied to the first image
             end
         end
-        
+
     else
         fprintf('%s was aligned\n', subjImg);
     end
@@ -132,7 +132,7 @@ else
     disp('Centered origin defined by:')
     newMat = inv(vs) %inv has to be there or the neg values leave the coreg with no mutual information
     spm_get_space(inputImg.fname, newMat);
-    
+
     % %% If you want to save the in-between step
     % % Note: add newName as an output
     % newName = strcat(sDir, filesep,'q', strcat(name,ext));
@@ -185,8 +185,6 @@ else
     fprintf('>Creating shifted matrix:%s\n', inputImg.fname);
     if exist('temp.nii','file')
         delete('temp.nii');
-    end 
+    end
     fclose(fopen('touch_acpc.txt', 'w'));
 end
-
-
