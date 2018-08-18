@@ -29,11 +29,11 @@ function [cwd, pth_subjdirs, subjList] = file_selector(subjs)
     end
     pth_subjdirs = unique(pth_subjdirs);
   else
-    cwd = cellfun(@(x), strip(x,'right',filesep), glob([pwd,filesep,'*',subjs])); % Apply the final filesep strip to each cell
+    cwd = strip(glob([pwd,filesep,'*',subjs]),'right',filesep);
     if isempty(cwd) && contains(pwd,subjs)
-      cwd = cellfun(@(x), strip(x,'right',filesep), glob(pwd));
+      cwd = strip(glob(pwd),'right',filesep);
     else
-      cwd = cellfun(@(x), strip(x,'right',filesep),glob([pwd,filesep,'*',filesep,'*',subjs]);
+      cwd = strip(glob([pwd,filesep,'*',filesep,'*',subjs]),'right',filesep);
       if isempty(cwd)
         disp('Could not identify the correct directory')
         disp('Check that you are in the project directory and re-run')
