@@ -29,6 +29,7 @@ function [cwd, pth_subjdirs, subjList] = file_selector(subjs)
     end
     pth_subjdirs = unique(pth_subjdirs);
   else
+<<<<<<< HEAD
     v = version('-release');
     if strcmp(v,'2012a')
       %Purely backwards compatibility for Mac server
@@ -48,6 +49,13 @@ function [cwd, pth_subjdirs, subjList] = file_selector(subjs)
     else
       % If the subj name needs to be added into the filepath search
       cwd = strip(glob([pwd,filesep,'*',filesep,'*',subjs]));
+=======
+    cwd = cellfun(@(x), strip(x,'right',filesep), glob([pwd,filesep,'*',subjs])); % Apply the final filesep strip to each cell
+    if isempty(cwd) && contains(pwd,subjs)
+      cwd = cellfun(@(x), strip(x,'right',filesep), glob(pwd));
+    else
+      cwd = cellfun(@(x), strip(x,'right',filesep),glob([pwd,filesep,'*',filesep,'*',subjs]);
+>>>>>>> c45c5fe25870923f7c1bf3834b0386b05ddff219
       if isempty(cwd)
         disp('Could not identify the correct directory')
         disp('Check that you are in the project directory and re-run')
