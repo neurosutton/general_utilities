@@ -1,0 +1,96 @@
+#!/bin/bash
+
+###############################################################
+# Purpose: Automatically detect uploaded scans, copy them to  #
+# Big Kahuna, and begin preprocessing.                        #
+# Author: Brianne Sutton, PhD                                 #
+# Date: July 2018                                             #
+# Refactored: Nov 2018                                        #
+# To add studies, expand the dirrectory and task dictionaries #
+#                                                             #
+###############################################################
+if [ -z $1 ] ; then
+  echo "Usage includes option to skip copying"
+  echo "e.g. auto_check skip"
+  exit
+else
+  echo $#
+  pswd=`cat /home/brianne/.key`
+  tmp_mnt='/mnt/threetbrain'
+  sort_files='/home/brianne/tools/general_utilities/sort_files'
+  cron_test='no'
+  if [[ "$cron_test" == 'yes' ]] ; then
+    echo "cron test done"
+  else
+    #Create a dictionary of the directories
+    declare -A dir_dict
+    dir_dict=(["Legget_ASDX"]="asdx" ["Legget_EXO"]='exobk' ["Legget_Priming"]='priming' ["Legget_TRN"]='trn')
+    declare -A task_dict
+    task_dict=(['asdx']="{'triangle'}" ['exobk']="{'fp_run1' 'fp_run2' 'ddisc_run1' 'ddisc_run2' }" ['priming']="{'fp_run1' 'fprun2' 'priming'}" ['trn']="{'triangle'}")
+    #dir_dict=(["Legget_ASDX"]="asdx")
+    #task_dict=(['asdx']="{'triangle'}")
+
+    if [ $# -gt 1 ] ; then
+      sudo mount -t cifs -o username=mruser,password=${pswd} //140.226.17.16/Y ${tmp_mnt}
+    fi
+
+    for dir_key in "${!dir_dict[@]}"; do
+      dest_dir=`echo /data/images/${dir_dict[$dir_key]}`
+      echo 'Checking' $dest_dir
+      sudo rm ${dest_dir}/subj_to_proc.txt 2> /dev/null
+      if [ $# -lt 2  ] ; then
+        echo "Searching for new files to copy"
+        #Locate the files on the remote server that have been updated.
+        files=`find ${tmp_mnt}/${dir_key} -maxdepth 1 -newermt '2 months ago' -type d`
+        for f in ${files[@]}; do
+          if [[ "${f}" != "${tmp_mnt}/${dir_key}" ]] ; then
+            rsync -vrz ${f} ${dest_dir} # Use rsync to reduce accidental re-copying.
+            name=`echo ${f} | rev | cut -d/ -f1 | rev`
+            echo ${name} >> ${dest_dir}/subj_to_proc.txt # Send the new, lowercase name to a text file to make the next process easier.
+          fi
+        done
+      else
+        echo "Skipping the mount and copy steps."
+        for dir_key in "${!dir_dict[@]}"; do
+          find ${dest_dir}/*/dicom -maxdepth 1 -newermt '2 months ago' -type d  | rev | cut -d/ -f2 | rev >> ${dest_dir}/subj_to_proc.txt
+        done
+      fi
+    done
+
+    if [ $# -eq 0 ] ; then
+      sudo umount -l ${tmp_mnt}
+      echo "> Copying from server complete."
+    fi
+
+    # Convert from dicom to nifti, autodetect ACPC, and start preprocessing
+    for dir_key in "${!dir_dict[@]}"; do
+      echo ">> Sorting and preprocessing files from: $dir_key"
+      dest=`echo ${dir_dict[$dir_key]}`
+      dest_dir="/data/images/${dest}"
+      if [[ -f  ${dest_dir}/subj_to_proc.txt ]] ; then
+        for s in $(cat ${dest_dir}/subj_to_proc.txt); do
+          # Want to run the permission check regardless of whether the copying occurs
+          prmssn_check=`ls -ld ${dest_dir}/${s}/ | cut -d' ' -f1`
+          if [[ "${prmssn_check}" != 'drwxrwxr-x' ]] ; then
+            echo "Changing permissions for ${dest_dir}/${s}"
+            sudo chmod 775 -R ${dest_dir}/${s}
+            sudo chgrp users -R ${dest_dir}/${s}
+          else
+            echo "Permissions already correct for ${dest_dir}/${s}"
+          fi
+
+          ${sort_files} ${dest} ${s}
+          subj=`cat ${dest_dir}/tmp.txt`
+          echo "Searching for: $subj"
+          task_list=`echo ${task_dict[$dest]}`
+          if [[ "$subj" != '' ]]; then
+            subj=`echo "'$subj'"`
+            cd ${dest_dir} # The file selector script needs to be close to the correct starting spot (e.g., /data/images, not /home/korey)
+            matlab -nosplash -nodesktop -r "in_set = containers.Map({'art'},[1]); addpath('/usr/local/MATLAB/tools/fmri_processing_utilities'); preproc_fmri($subj,$task_list,in_set); quit"
+          fi
+        done
+      fi
+    done
+  fi
+fi
+exit

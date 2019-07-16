@@ -1,0 +1,38 @@
+#!/bin/bash
+
+############################################################
+# Purpose: Add suffixes indicating group membership        #
+# Author: Brianne Sutton, PhD                              #
+# Date: June 2019                                          #
+############################################################
+
+prog=$0
+group_file=$1
+suffix=$2
+home=`pwd`
+input="" #initializing the variable, so that the user will not have to answer the question every time.
+
+if [[ -z $2 ]] ; then
+   echo "Usage: ${prog} group_file suffix"
+   echo "e.g., ${prog} exercisers ex"
+   echo "Script expects to start in the study folder"
+   echo "home folder set to: ${home}"
+   exit
+fi
+
+study_prefix=`echo ${home} | rev | cut -d/ -f1 | rev | cut -c1-3`
+for fls in $(cat ${group_file}); do 
+    for subj in $(ls -d ${home}/${study_prefix}*${fls}*); do 
+	main_name=`echo $subj |rev| cut -d/  -f1 | rev | cut -d_ -f1-2`
+        if [[ $input == "" ]] ; then
+	    echo "mv ${subj} ${home}/${main_name}_${suffix}"
+	    read -p "Does the above command look correct? yes or no " input
+	fi
+        if [[ $input =~ ^[yY] ]] ; then
+	    mv ${subj} ${home}/${main_name}_${suffix}
+	else
+	    echo "Please look at the script and make corrections"
+	    exit
+	fi
+    done
+done
