@@ -55,7 +55,7 @@ function [subj_dir, subj_file, file_ext] = locate_scan_file(modality,subj)
       end
     end
 
-    wrgStr = {'Bias' 'emplate' 'brain' 'mwc' 'wc' 'iy' 'y'};
+    wrgStr = {'Bias' 'emplate' 'brain'};
     for w = 1:length(wrgStr)
         wrg = char(wrgStr(w));
         tmp = cellfun(@(x) strfind(x,wrg), scan_file, 'UniformOutput',false);

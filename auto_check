@@ -6,113 +6,67 @@
 # Author: Brianne Sutton, PhD                                 #
 # Date: July 2018                                             #
 #                                                             #
-# To add studies, expand the directory and task dictionaries  #
+# To add studies, expand the dirrectory and task dictionaries #
 #                                                             #
 ###############################################################
-if [ -z $1 ] ; then
-  echo "Usage includes option to skip copying"
-  echo "e.g. auto_check skip"
-fi
 
 pswd=`cat /home/brianne/.key`
 tmp_mnt='/mnt/threetbrain'
 sort_files='/home/brianne/tools/general_utilities/sort_files'
-cron_test='no' # For auto-scheduling
+cron_test='no'
 if [[ "$cron_test" == 'yes' ]] ; then
   echo "cron test done"
-elif [ $# -gt 1 ] ; then
-  echo "Skipping the mount and copy steps."
-  for dirKey in "${!dir_dict[@]}"; do
-    echo 'Checking' ${dirKey}
-    dest_dir=`echo /data/images/${dir_dict[$dirKey]}`
-    rm ${dest_dir}/subj_to_proc.txt 2> /dev/null
-    find ${tmp_mnt}/${dirKey} -maxdepth 1 -newermt '12 months ago' -type d  | rev | cut -d/ -f2 | rev >> ${dest_dir}/subj_to_proc.txt
-  done
 else
-  #Create a dictionary of the directories
-  declare -A dir_dict
-  dir_dict=(["Legget_ASDX_14-1282"]="asdx" ["Legget_EXO_13-3252"]='exobk' ["Legget_Priming_13-1786"]='priming' ["Legget_TRN_12-0768"]='trn')
-  declare -A task_dict
-  task_dict=(['asdx']="{'triangle'}" ['exobk']="{'fp_run1' 'fprun2' }" ['priming']="{'fp_run1' 'fprun2' 'priming'}" ['trn']="{'triangle'}")
+#Create a dictionary of the directories
+declare -A dir_dict
+dir_dict=(["Legget_ASDX"]="asdx" ["Legget_EXO"]='exobk' ["Legget_Priming"]='priming' ["Legget_TRN"]='trn')
+declare -A task_dict
+task_dict=(['asdx']="{'triangle'}" ['exobk']="{'fp_run1' 'fprun2' }" ['priming']="{'fp_run1' 'fprun2' 'priming'}" ['trn']="{'triangle'}")
+#dir_dict=(["Legget_ASDX"]="asdx")
+#task_dict=(['asdx']="{'triangle'}")
 
-  # For single study, catch up checks...
-  #  dir_dict=(["Legget_EXO_13-3252"]='exobk')
-  #  task_dict=(['exobk']="{'fp_run1' 'fprun2' }")
+mount -t cifs -o username=mruser,password=${pswd} //140.226.17.16/Y ${tmp_mnt}
 
-  echo "sudo mount -t cifs -o username=mruser //140.226.17.61/X ${tmp_mnt}" # The command often throws cryptic error msgs, so keep this line to troubleshoot on the commandline more quickly.
-  sudo mount -t cifs -o username=mruser,password=${pswd} //140.226.17.61/X ${tmp_mnt}
-  #ls -ld ${tmp_mnt}/* #for troubleshooting
+for dk in "${!dir_dict[@]}"; do
+  echo 'Checking' ${dk}
+  dest_dir=`echo /data/images/${dir_dict[$dk]}`
+  rm ${dest_dir}/subj_to_proc.txt 2> /dev/null
 
-  for dirKey in "${!dir_dict[@]}"; do
-    echo 'Checking' ${dirKey}
-    dest_dir=`echo /data/images/${dir_dict[$dirKey]}`
-    rm ${dest_dir}/subj_to_proc.txt 2> /dev/null
-    echo "dirKey = ${dirKey}"
-    echo "dest_dir = ${dest_dir}"
-
-    #Locate the files on the remote server that have been updated.
-    files=`find ${tmp_mnt}/${dirKey} -maxdepth 1 -newermt '12 months ago' -type d`
-    for f in ${files[@]}; do
-      if [[ "${f}" != "${tmp_mnt}/${dirKey}" ]] ; then
-        scanId=`echo ${f,,} | rev | cut -d/ -f1 | rev | cut -d_ -f2-3`
-        echo "Checking if ${scanId} has already been copied"
-        if compgen -G ${dest_dir}/*${scanId}* ; then
-          ls -ld ${dest_dir}/*${scanId}*
-        else
-          time(rsync -vrz ${f} ${dest_dir}) # Use rsync to reduce accidental re-copying.
-          subjName=`echo ${f} | rev | cut -d/ -f1 | rev`
-          echo ${subjName} >> ${dest_dir}/subj_to_proc.txt # Send the new, lowercase name to a text file to make the next process easier.
-        fi
-      fi
-    done
-    per_check=`ls -ld ${dest_dir}/ | cut -d' ' -f1`
-    if [[ "${per_check}" != 'drwxrwxr-x' ]] ; then
-      echo "Changing permissions for ${dest_dir}"
-      sudo chmod 775 -R ${dest_dir}
-      chgrp users -R ${dest_dir}
-    else
-      echo "Permissions already correct for ${dest_dir}"
+  #Locate the files on the remote server that have been updated.
+  files=`find ${tmp_mnt}/${dk} -maxdepth 1 -newermt '1 week ago' -type d`
+  for f in ${files[@]}; do
+    if [[ "${f}" != "${tmp_mnt}/${dk}" ]] ; then
+      #rsync -vrz ${f} ${dest_dir} # Use rsync to reduce accidental re-copying.
+      name=`echo ${f} | rev | cut -d/ -f1 | rev`
+      echo ${name} >> ${dest_dir}/subj_to_proc.txt # Send the new, lowercase name to a text file to make the next process easier.
     fi
   done
-  sudo umount -l ${tmp_mnt}
-fi
+  echo "Changing permissions for ${dest_dir}"
+  chmod 775 -R ${dest_dir}
+  chgrp users -R ${dest_dir}
+done
+umount -l ${tmp_mnt}
 
-if [ $# -eq 0 ] ; then
-  sudo umount -l ${tmp_mnt}
-  echo "> Copying from server complete."
-fi
+echo "> Copying from server complete."
 
 # Convert from dicom to nifti, autodetect ACPC, and start preprocessing
-for dirKey in "${!dir_dict[@]}"; do
-  echo ">> Sorting and preprocessing files from: $dirKey"
-  dest=`echo ${dir_dict[$dirKey]}`
+for dk in "${!dir_dict[@]}"; do
+  echo ">> Sorting and preprocessing files from: $dk"
+  dest=`echo ${dir_dict[$dk]}`
   dest_dir="/data/images/${dest}"
   if [[ -f  ${dest_dir}/subj_to_proc.txt ]] ; then
     for s in $(cat ${dest_dir}/subj_to_proc.txt); do
-      # Want to run the permission check regardless of whether the copying occurs
-      prmssn_check=`ls -ld ${dest_dir}/${s}/ | cut -d' ' -f1`
-      if [[ "${prmssn_check}" != 'drwxrwxr-x' ]] ; then
-        echo "Changing permissions for ${dest_dir}/${s}"
-        sudo chmod 775 -R ${dest_dir}/${s}
-        sudo chgrp users -R ${dest_dir}/${s}
-      else
-        echo "Permissions already correct for ${dest_dir}/${s}"
-      fi
-
       ${sort_files} ${dest} ${s}
-      subj=`cat ${dest_dir}/tmp.txt` # from sort_files, this text file contains new names of directories to be processed.
+      subj=`cat ${dest_dir}/tmp.txt`
       echo "Searching for: $subj"
       task_list=`echo ${task_dict[$dest]}`
       if [[ "$subj" != '' ]]; then
         subj=`echo "'$subj'"`
         cd ${dest_dir} # The file selector script needs to be close to the correct starting spot (e.g., /data/images, not /home/korey)
-        echo "matlab -nosplash -nodesktop -r options = containers.Map({'art'},[1]); addpath('/usr/local/MATLAB/tools/fmri_processing_utilities'); preproc_fmri($subj,{$task_list},options); quit"
-        matlab -nosplash -nodesktop -r "options = containers.Map({'art'},[1]); addpath('/usr/local/MATLAB/tools/fmri_processing_utilities'); preproc_fmri($subj,{$task_list},options); quit"
+        matlab -nosplash -nodesktop -r "in_set = containers.Map({'art'},[1]); addpath('/usr/local/MATLAB/tools/fmri_processing_utilities'); preproc_fmri($subj,$task_list,in_set); quit"
       fi
     done
   fi
 done
-if [[ -e ${dest_dir}/subj_to_proc.txt ]] ; then
-  rm ${dest_dir}/subj_to_proc.txt ${dest_dir}/tmp.txt
 fi
 exit

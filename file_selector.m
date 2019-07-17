@@ -29,32 +29,17 @@ function [cwd, pth_subjdirs, subjList] = file_selector(subjs)
     end
     pth_subjdirs = unique(pth_subjdirs);
   else
-    v = version('-release');
-    if strcmp(v,'2012a')
-      %Purely backwards compatibility for Mac server
-      if strfind(pwd,subjs)
-        cwd = {pwd};
-      else
-        cwd = glob([pwd,filesep,'*',subjs]);
-        if isempty(cwd)
-          cwd =glob([pwd,filesep,'*',filesep,'*',subjs]);
-        end
-      end
+    cwd = strip(glob([pwd,filesep,'*',subjs]),'right',filesep);
+    if isempty(cwd) && contains(pwd,subjs)
+      cwd = strip(glob(pwd),'right',filesep);
     else
-    cwd = strip(glob([pwd,filesep,'*',subjs])); % Apply the final filesep strip to each cell
-    if isempty(cwd) && ~isempty(contains(pwd,subjs)) %MATLAB prior to 2016a doesn't have this function
-      % If the subj name is in the filepath, keep it
-      cwd = strip(glob(pwd));
-    else
-      % If the subj name needs to be added into the filepath search
-      cwd = strip(glob([pwd,filesep,'*',filesep,'*',subjs]));
+      cwd = strip(glob([pwd,filesep,'*',filesep,'*',subjs]),'right',filesep);
       if isempty(cwd)
         disp('Could not identify the correct directory')
         disp('Check that you are in the project directory and re-run')
         return
       end
     end
-  end
     check = textscan(cwd{1,1},'%s','Delimiter','/');
     ix = strfind(check{1,1},subjs(1:3));
     ix = ~cellfun('isempty',ix);
