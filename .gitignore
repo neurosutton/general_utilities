@@ -1,1 +1,5 @@
+.remote-sync.json
+.DS_Store
+.ipynb_checkpoints/*
+._*
 *.remote-sync.json

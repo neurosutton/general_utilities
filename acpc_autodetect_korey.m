@@ -72,25 +72,27 @@ for i=1:size(imglist,1)
             fclose(fopen('unable2process.txt','w'));
         else
             switch inputImg(1).dim(1)
-                case 108;
+                case 108
                     update_hdr(inputImg(1),  2, -8); % [104.5, 130, 120]
-                case  256
-                    update_hdr(inputImg(1), 5, 15); %works for AMC scans
+                case 256
+                    update_hdr(inputImg(1), 0, 2); %works for AMC scans
+                case 64
+                    update_hdr(inputImg(1), 0, 6); % AMC IR_EPI
                 case 208
                     update_hdr(inputImg(1),  0 ,0); %[104.5, 128, 128]
                     %This site seems to be quite unpredicatable. Consider manual
                     %ACPC alaignment
                     checkList = [checkList, img];
-                case  90
+                case 90
                     update_hdr(inputImg(1), 10, 0);
-                case  96
+                case 96
                     update_hdr(inputImg(1), 10, 0);
-                case 176
+                case  176
                     update_hdr(inputImg(1), 15, 5); %[88, 143, 133]
-                case 225
+                case  225
                     update_hdr(inputImg(1), 8, 18); %[113, 136, 146]
                 otherwise
-                    sprintf('New dimension to consider: %s; Dim: %d\n>>> Approximating center of FOV <<<', subjImg, inputImg(1).dim(1));
+                    fprintf('New dimension to consider: %s; Dim: %d\n>>> Approximating center of FOV <<<\n', subjImg, inputImg(1).dim(1));
                     update_hdr(inputImg(1),  0 ,0);
             end
             if ~isnan(inputImg(1).mat)
@@ -106,18 +108,17 @@ for i=1:size(imglist,1)
         if isnan(imgList(1).mat)
             fclose(fopen('unable2process.txt','w'));
         else
-            % Original translation corrections
-            %update_hdr(imgList(1), 2,-3);
-            % Update 09.19
             switch imgList(1).dim(1)
-                case 108;
+                case 108
                     update_hdr(imgList(1),  2, -8); % [104.5, 130, 120]
                 case 256
                     update_hdr(imgList(1), 2, 30); %works for AMC scans
                 case 208
                     update_hdr(imgList(1),  0 ,0); %[104.5, 128, 128]
-                %This site seems to be quite unpredicatable. Consider manual
+                    %This site seems to be quite unpredicatable. Consider manual
                 %ACPC alaignment
+                case 64
+                    update_hdr(imgList(1),  0 ,0);
                 case 90
                     update_hdr(imgList(1), 10, 0);
                 case 96
@@ -127,29 +128,31 @@ for i=1:size(imglist,1)
                 case 225
                     update_hdr(imgList(1), 8, 18); %[113, 136, 146]
                 otherwise
-                    sprintf('New dimension to consider: %s; Dim: %d\n>>> Approximating center of FOV <<<\n', subjImg, imgList(1).dim(1));
+                    fprintf('New dimension to consider: %s; Dim: %d\n>>> Approximating center of FOV <<<\n', subjImg, imgList(1).dim(1));
                     update_hdr(imgList(1),  0 ,0);
             end
-            
-                [newMat] =update_hdr_coreg(imgList(1), standardTemplate,'none');
-                fprintf('May take awhile... %d volumes\n\n', length(imgList));
-                for i = 2:length(imgList)
-                    num=int2str(i);
-                    spm_get_space(char(strcat(imgList(1).fname,",",num)), newMat); %Must include the index via the strcat or the mat is only applied to the first image
-                end
+
+            %update_hdr(imgList(1), 2,-3);
+            [newMat] =update_hdr_coreg(imgList(1), standardTemplate, 'none');
+            fprintf('May take awhile... %d volumes\n\n', length(imgList));
+
+            for i = 2:length(imgList)
+                num=int2str(i);
+                spm_get_space(char(strcat(imgList(1).fname,",",num)), newMat); %Must include the index via the strcat or the mat is only applied to the first image
+            end
         end
 
     else
         fprintf('%s was aligned\n', subjImg);
     end
-    save(strcat(projDir,filesep,'check_acpc_alignment.txt'));
+    %save(strcat(projDir,filesep,'check_acpc_alignment.txt'));
 end
 
 function [newMat] = update_hdr (inputImg, corrFactor1, corrFactor2)
 vs = inputImg.mat\eye(4); %throw away line just to define vs?
 vs(1:3,4) = (inputImg.dim+1)/2;
-vs(2,4) = vs(2,4)  + corrFactor1;
-vs(3,4) = vs(3,4) + corrFactor2; %the origin was too low
+vs(2,4) = vs(2,4)  + corrFactor1; % TRANSLATION X
+vs(3,4) = vs(3,4) + corrFactor2; %the origin was too low  %TRANSLATION Up/down
 if isnan(vs)
     fclose(fopen('bad_centering.txt','w'));
 else
@@ -177,12 +180,8 @@ else
     fprintf('Finding affine matrix; Dim1 = %d\n', inputImg.dim(1));
     vol2manipulate= inputImg;
 end
-try
-    [M,scal] = spm_affreg(standardTemplate,vol2manipulate(1),flags);
-catch
-    sprintf('Mismatching dimensions. Cannot align');
-    return
-end
+[M,scal] = spm_affreg(standardTemplate,vol2manipulate(1),flags);
+
 % %% Chu's original. Definitely needed if flag is mni; may not be needed if flag is rigid
 % M3=M(1:3,1:3);
 % [u s v]=svd(M3);
@@ -211,9 +210,9 @@ if isnan(newMat)
     return
 else
     spm_write_vol(inputImg, Y);
-    sprintf('>Creating shifted matrix:%s\n', inputImg.fname);
+    fprintf('>Creating shifted matrix:%s\n', inputImg.fname);
     if exist('temp.nii','file')
         delete('temp.nii');
     end
-    fclose(fopen('touch_acpc.txt', 'w'));
+    %fclose(fopen('touch_acpc.txt', 'w'));
 end

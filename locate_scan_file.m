@@ -3,7 +3,8 @@ function [subj_dir, subj_file, file_ext] = locate_scan_file(modality,subj)
   % by our custom pipelines. By default, the script will find the T1
   % directory and scan for a given subject.
   %
-  % Author: Brianne Mohl, PhD 2017
+  % Author: Brianne Sutton, PhD
+  % Created: 2017
   %
   % Expected input includes a subject ID, since this script is not intended
   % as a stand-alone, but rather part of the pipelines.
@@ -18,7 +19,7 @@ function [subj_dir, subj_file, file_ext] = locate_scan_file(modality,subj)
     cwd = pwd;
     check = textscan(cwd,'%s','Delimiter','/');
     ix = strfind(check{1,1},subj); %index that matches the subject string with the cells, so that the code can support relative paths
-    if isempty(arrayfun(@(x) isempty(x),ix));
+    if sum(arrayfun(@(x) isempty(x),ix))<1;
       ix = strfind(check{1,1},subj(1:3)); %This index catches cases where the study and subject naming schemes are similar, but there was no subject name in the cell array
     end
     ix = ~cellfun('isempty',ix);
@@ -55,7 +56,7 @@ function [subj_dir, subj_file, file_ext] = locate_scan_file(modality,subj)
       end
     end
 
-    wrgStr = {'Bias' 'emplate' 'brain'};
+    wrgStr = {'Bias' 'emplate' 'brain' 'mwc' 'wc' 'iy' 'y_'};
     for w = 1:length(wrgStr)
         wrg = char(wrgStr(w));
         tmp = cellfun(@(x) strfind(x,wrg), scan_file, 'UniformOutput',false);

@@ -1,6 +1,4 @@
 function [pth_taskdirs, taskArray] = file_selector_task(pth_subjdirs, taskArray)
-% The taskArray must be in a cell array format or line 21 will fail, b/c
-% the task will be split into single characters.
 
 % Finds the top level of study
 pth_taskdirs = struct(); %Initalize structure for speed

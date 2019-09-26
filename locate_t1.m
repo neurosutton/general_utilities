@@ -8,7 +8,7 @@ else
 end
 check = textscan(cwd,'%s','Delimiter','/');
 ix = strfind(check{1,1},subj);
-if isempty(arrayfun(@(x) isempty(x),ix));
+if sum(arrayfun(@(x) isempty(x),ix))<1;
     ix = strfind(check{1,1},subj(1:3));
 end
 

@@ -2,6 +2,13 @@ function resize_img(imnames, Voxdim, BB, ismask)
 %  resize_img -- resample images to have specified voxel dims and BBox
 % resize_img(imnames, voxdim, bb, ismask)
 %
+
+% BMS notes: if you don't know the bounding box, work with the world_bb
+% function. Use spm_load(template_img_of_choice) to get the final dims.
+% Walk through the world_bb function to generate the min and max of the
+% final bounding box. Enter those values as the BB values in the script.
+
+
 % Output images will be prefixed with 'r', and will have voxel dimensions
 % equal to voxdim. Use NaNs to determine voxdims from transformation matrix
 % of input image(s).

@@ -1,0 +1,61 @@
+function a_4dto3d_batch(subj,task)
+
+home_dir = 'E:\Brian2\brianne\fc_pd\subjs';
+cd(home_dir);
+
+    if strcmp('all',subj_name)
+ 
+    else
+        subj_names = cellstr(subj_name);
+    end
+if strcmp('all',subj)
+subj_list = dir('*'); %For standalone function, no inputs
+subj_list = subj_list(3:length(subj_list)); %For standalone function, no
+else
+    subj_list = 
+%inputs 
+
+%%
+%for k = 1:length(subj_list); For standalone function, no inputs
+    cd(home_dir);
+%    subj = subj_list(k).name For standalone function, no inputs
+    %%
+    subj_folder = strcat(home_dir,filesep,subj);
+    godir = char(strcat(subj_folder,filesep,task));
+    cd(strcat(godir,filesep,'raw'));
+    orig = ls(strcat(subj,'_',task,'*nii'));
+    orig = strcat(godir,filesep,'raw',filesep,orig);
+    %orig = char(strcat(godir,filesep,'raw',filesep,subj,'_',task,'*nii'))%original file
+    
+    cd (godir)
+    check = strcat(subj,'*_050.nii');
+    check_4d = dir(check);
+    fourd_name = dir(orig)%Did the file get copied?
+    fourd_origfile = strcat(godir,filesep,fourd_name.name);
+    fourd_orig_name = dir(fourd_origfile);
+    
+    %% Check whether the file has already been split.
+    if isempty(check_4d);
+            fprintf('%s has not been split. Copying file.\n',subj);
+        if isempty(fourd_orig_name)
+            copyfile(orig,godir)
+            fprintf('Copying %s to %s.\n',orig,godir);
+            fourd_name = dir(orig)
+        end
+        %% Splits appropriate file
+        if ~isempty(fourd_origfile);
+            display('Commencing split.')
+            full_fourd_name = fullfile(godir,fourd_name.name)
+            a_4dto3d(full_fourd_name)
+            delete(full_fourd_name);
+        end
+        
+    else fprintf('%s has been split\n', subj);
+        if ~isempty(fourd_orig_name);
+            delete(fourd_orig_name.name) %cleans up for future processing
+        end
+    end
+    
+%end For standalone function, no inputs
+
+

@@ -1,0 +1,9 @@
+# find directory
+SITEDIR=$(python -m site --user-site)
+
+# create if it doesn't exist
+mkdir -p "$SITEDIR"
+
+# create new .pth file with our path
+echo "/home/brianne/tools/python_dev" >> "$SITEDIR/uc_pydev.pth"
+echo "/home/brianne/tools/nipype_dev" >> "$SITEDIR/uc_pydev.pth"
