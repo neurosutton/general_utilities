@@ -3,3 +3,4 @@
 .ipynb_checkpoints/*
 ._*
 *.remote-sync.json
+*~

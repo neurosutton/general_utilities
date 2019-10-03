@@ -156,7 +156,7 @@ else
     #Sort the gzip files
     if [ -z ${task} ] ; then
       if [ ${proj} == "exobk" ] ; then
-        scan_names=("ddisc" "fp" "t1")
+        scan_names=("ddisc" "fp" "t1" "rest")
       elif [ ${proj} == "exw" ] ; then
         scan_names=("ddisc" "rest" "fp" "t1" "asl")
       elif [ ${proj} == "priming" ] ; then

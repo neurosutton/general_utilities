@@ -35,7 +35,7 @@ for dk in "${!dir_dict[@]}"; do
   rm ${dest_dir}/subj_to_proc.txt 2> /dev/null
 
   #Locate the files on the remote server that have been updated.
-  files=`find ${tmp_mnt}/${dk}* -maxdepth 1 -newermt '1 weeks ago' -type d`
+  files=`find ${tmp_mnt}/${dk}* -maxdepth 1 -newermt '3 weeks ago' -type d`
   for f in ${files[@]}; do
     orig=`echo ${f} | rev | cut -d/ -f1 | rev`
     if [[ "${orig}" != *"${dk}"* ]] ; then
