@@ -40,11 +40,17 @@ for i=1:size(imglist,1)
     img = char(strrep(deblank(imglist(i,:)),",1",""))
     [subjDir subjImg ext] = fileparts(img);
     touchFile = [subjDir, filesep, 'touch_acpc.txt'];
-
+    
+    %% If manually reoriented, create the touch file
+    reorient_mat = glob([subjDir, filesep,'*reorient.mat'])
+    if ~isempty(reorient_mat)
+            fclose(fopen([subjDir,filesep,'touch_acpc.txt'], 'w'));
+    end
+    
     %% Decide what kind of scan is being processed
     [projDir scan_type] = fileparts(subjDir);
     substring = {'t1','anat'};
-    if contains(lower(scan_type), substring) || contains(lower(subjImg), substring)
+    if contains(string(lower(scan_type)), substring) || contains(string(lower(subjImg)), substring)
         anatPath = 'yes';
         template=[spmDir filesep 'canonical/avg152T1.nii'];
     else
@@ -122,6 +128,8 @@ for i=1:size(imglist,1)
                     update_hdr(imgList(1), 10, 0);
                 case 96
                     update_hdr(imgList(1), 10, 0);
+                case 64
+                    update_hdr(imgList(1), 2,-3);
                 case 176
                     update_hdr(imgList, 15, 5); %[88, 143, 133]
                 case 225
@@ -129,6 +137,10 @@ for i=1:size(imglist,1)
                 otherwise
                     sprintf('New dimension to consider: %s; Dim: %d\n>>> Approximating center of FOV <<<\n', subjImg, imgList(1).dim(1));
                     update_hdr(imgList(1),  0 ,0);
+            end
+            switch imgList(1).dim(3)
+                case 27
+                   update_hdr(imgList(1), 0, 5); 
             end
             
                 [newMat] =update_hdr_coreg(imgList(1), standardTemplate,'none');

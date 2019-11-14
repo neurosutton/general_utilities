@@ -13,7 +13,7 @@ addpath([tool_dir filesep 'general_utilities']);
 addpath([tool_dir filesep 'fmri_processing_utilities']);
 addpath([tool_dir filesep 'asl_utilities']);
 
-if exist('spm_ver','var') && contains(spm_ver,'8')
+if exist('spm_ver','var') && contains(string(spm_ver),'8')
     set_spm('8');
     spm_home=fileparts(which('spm'));
     addpath([spm_home,filesep, 'matlabbatch']);

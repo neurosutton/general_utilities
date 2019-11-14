@@ -30,7 +30,7 @@ function [cwd, pth_subjdirs, subjList] = file_selector(subjs)
     pth_subjdirs = unique(pth_subjdirs);
   else
     cwd = strip(glob([pwd,filesep,'*',subjs]),'right',filesep);
-    if isempty(cwd) && contains(pwd,subjs)
+    if isempty(cwd) && contains(string(pwd),subjs)
       cwd = strip(glob(pwd),'right',filesep);
     else
       cwd = strip(glob([pwd,filesep,'*',filesep,'*',subjs]),'right',filesep);

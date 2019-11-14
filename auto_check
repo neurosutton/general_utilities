@@ -23,7 +23,7 @@ else
 declare -A dir_dict
 dir_dict=(["Legget_ASDX"]="asdx" ["Legget_EXO"]='exobk' ["Legget_Priming"]='priming' ["Legget_TRN"]='trn')
 declare -A task_dict
-task_dict=(['asdx']="{'triangle'}" ['exobk']="{'fp_run1' 'fprun2' }" ['priming']="{'fp_run1' 'fprun2' 'priming'}" ['trn']="{'triangle'}")
+task_dict=(['asdx']="{'triangle'}" ['exobk']="{'fp_run1' 'fprun2' 'rest' }" ['priming']="{'fp_run1' 'fprun2' 'priming'}" ['trn']="{'triangle'}")
 #dir_dict=(["Legget_ASDX"]="asdx")
 #task_dict=(['asdx']="{'triangle'}")
 
@@ -35,7 +35,7 @@ for dk in "${!dir_dict[@]}"; do
   rm ${dest_dir}/subj_to_proc.txt 2> /dev/null
 
   #Locate the files on the remote server that have been updated.
-  files=`find ${tmp_mnt}/${dk}* -maxdepth 1 -newermt '3 weeks ago' -type d`
+  files=`find ${tmp_mnt}/${dk}* -maxdepth 1 -newermt '1 year ago' -type d`
   for f in ${files[@]}; do
     orig=`echo ${f} | rev | cut -d/ -f1 | rev`
     if [[ "${orig}" != *"${dk}"* ]] ; then
@@ -52,20 +52,20 @@ for dk in "${!dir_dict[@]}"; do
       if [[ ! -z "${timept}" && ${#timept} -lt 2 ]] ; then
 	  # Not all studies may have timepoints. Provide a renaming scheme for those that do
 	  name=`echo ${orig} | cut -d_ -f1-3` # The timepoint needs to be added back into the name for the checks, b/c the delimited field was a timepoint
-	  check3=`ls -d ${dest_dir}/${rplc}_${timept}* | wc | awk '{print $1}'`
+	  check3=`ls -d ${dest_dir}/${rplc}_${timept}* 2>/dev/null | wc | awk '{print $1}'`
       else
 	  # If there are a lot more numbers or no numbers in "timept", then this delimited field was not a timepoint and needs to be disregarded.
 	  if [[ "${debug}" == "yes" ]]; then
 	      [ ! -z ${timept} ] && echo "timept variable exists" || echo "timept variable does not exist"
 	      [ ${#timept} -gt 2 ] && echo "timept is at least double digit" || echo false
 	  fi
-	  check3=`ls -d ${dest_dir}/${rplc}* | wc | awk '{print $1}'`
+	  check3=`ls -d ${dest_dir}/${rplc}* 2>/dev/null | wc | awk '{print $1}'`
       fi
 
 # Get the number of folders already matching the "new" scan name.
 # If there are matches, then copying will not be done to avoid messing with the naming scheme or overwriting already aligned or processed files.
-      check1=`ls -d ${dest_dir}/${name}* | wc | awk '{print $1}'`
-      check2=`ls -d ${dest_dir}/${name,,}* | wc | awk '{print $1}'`
+      check1=`ls -d ${dest_dir}/${name}* 2>/dev/null | wc | awk '{print $1}'`
+      check2=`ls -d ${dest_dir}/${name,,}*  2>/dev/null | wc | awk '{print $1}'` 
       checks=$(( ${check1} + ${check2} + ${check3} ))
 	  if [[ "${debug}" == "yes" ]]; then
 	      echo "${check1}+${check2}+${check3}=${checks}"
@@ -88,22 +88,27 @@ done
 umount -l ${tmp_mnt}
 
 echo "> Copying from server complete."
-exit
+
 # Convert from dicom to nifti, autodetect ACPC, and start preprocessing
 for dk in "${!dir_dict[@]}"; do
   echo ">> Sorting and preprocessing files from: $dk"
   dest=`echo ${dir_dict[$dk]}`
   dest_dir="/data/images/${dest}"
   if [[ -f  ${dest_dir}/subj_to_proc.txt ]] ; then
-    for s in $(cat ${dest_dir}/subj_to_proc.txt); do
+      readarray -t subjs < ${dest_dir}/subj_to_proc.txt
+      subjs=($(printf "%s\n" "${subjs[@]}" | sort -u))
+    for s in ${subjs[@]} ; do
+      if [[ -e ${dest_dir}/tmp.txt ]] ; then
+	  rm ${dest_dir}/tmp.txt
+      fi
       ${sort_files} ${dest} ${s}  # dicom conversion and AC-PC alignment
-      subj=`cat ${dest_dir}/tmp.txt`
-      echo "Searching for: $subj"
-      task_list=`echo ${task_dict[$dest]}`
-      if [[ "$subj" != '' ]]; then
-        subj=`echo "'$subj'"`
-        cd ${dest_dir} # The file selector script needs to be close to the correct starting spot (e.g., /data/images, not /home/korey)
-        matlab -nosplash -nodesktop -r "in_set = containers.Map({'art'},[1]); addpath('/usr/local/MATLAB/tools/fmri_processing_utilities'); preproc_fmri($subj,$task_list,in_set); quit"
+      if [[ -e ${dest_dir}/tmp.txt ]] ; then
+	  subj=`cat ${dest_dir}/tmp.txt`
+	  echo "Searching for: $subj"
+	  task_list=`echo ${task_dict[$dest]}`
+          subj=`echo "'$subj'"`
+          cd ${dest_dir} # The file selector script needs to be close to the correct starting spot (e.g., /data/images, not /home/korey)
+          matlab -nosplash -nodesktop -r "in_set = containers.Map({'art'},[1]); addpath('/usr/local/MATLAB/tools/fmri_processing_utilities'); preproc_fmri($subj,$task_list,in_set); quit"
       fi
     done
   fi

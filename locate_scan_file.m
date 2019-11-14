@@ -70,10 +70,11 @@ function [subj_dir, subj_file, file_ext] = locate_scan_file(modality,subj)
       file_ext = [];
       return
     else
+      num_scans = length(scan_file);
       scan_file =  scan_file(val==min(val)); %finds the raw image by looking for the shortest character length
       if length(scan_file) > 1
         ix = textscan(subj,'%s','Delimiter','_');
-        ix = str2num(ix{1,1}{end})/2; %index of the corresponding scan_file entry
+        ix = floor(str2num(ix{1,1}{end})/num_scans+1); %index of the corresponding scan_file entry
         scan_file = scan_file{ix};
       end
       [scan_file] = char(scan_file); %partial name, can't use as output filepath
