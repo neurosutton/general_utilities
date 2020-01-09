@@ -138,16 +138,18 @@ for i=1:size(imglist,1)
                     sprintf('New dimension to consider: %s; Dim: %d\n>>> Approximating center of FOV <<<\n', subjImg, imgList(1).dim(1));
                     update_hdr(imgList(1),  0 ,0);
             end
+            
             switch imgList(1).dim(3)
                 case 27
-                   update_hdr(imgList(1), 0, 5); 
+                update_hdr(imgList(1), 0, 5); 
             end
-            
-                [newMat] =update_hdr_coreg(imgList(1), standardTemplate,'none');
-                fprintf('May take awhile... %d volumes\n\n', length(imgList));
-                for i = 2:length(imgList)
-                    num=int2str(i);
-                    spm_get_space(char(strcat(imgList(1).fname,",",num)), newMat); %Must include the index via the strcat or the mat is only applied to the first image
+                try
+                    [newMat] =update_hdr_coreg(imgList(1), standardTemplate,'none');
+                    fprintf('May take awhile... %d volumes\n\n', length(imgList));
+                    for i = 2:length(imgList)
+                        num=int2str(i);
+                        spm_get_space(char(strcat(imgList(1).fname,",",num)), newMat); %Must include the index via the strcat or the mat is only applied to the first image
+                    end
                 end
         end
 
