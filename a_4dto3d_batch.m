@@ -8,6 +8,9 @@ if strcmp('all',in_subj)
         fsndirs = [find_subj_names(:).isdir];
         subj_names = {find_subj_names(fsndirs).name};
         subj_names(ismember(subj_names,{'.','..'})) = [];
+elseif strcmp('choose',in_subj)
+        subj_names = cellstr(spm_select([1,400],'nii'));
+        selected = 'yes';
 else
         subj_names = cellstr(in_subj);
 end
@@ -15,28 +18,29 @@ end
 %%
 for k = 1:length(subj_names); 
     cd(home_dir);
-    subj = char(subj_names(k)); 
+    subj = char(subj_names(k));
     %%
-    subj_folder = strcat(home_dir,filesep,subj);
-    %godir = char(strcat(subj_folder,filesep,task));
-    godir = char(strcat(subj_folder));
-    cd (godir)
-    %cd(strcat(godir,filesep,'raw'));
-    if exist('task','var')
-        orig = glob(strcat('*_',task,'*nii'));
-        nFiles = length(orig);
+    if exist('selected','var')
+        sprintf('WARNING: Do NOT CNTL+C to exist process');
+        a_4dto3d(subj);
     else
-        tmp = char(glob(strcat(godir,filesep,'*nii')));
-        nFiles = length(tmp);
-        [throw orig ext] = fileparts(tmp(1,:));
-        orig = {strcat(orig,ext)};
-    end
+        [home_dir, subj] = fileparts(subj);
+        subj_folder = strcat(home_dir,filesep,subj);
+        if exist('task','var')
+            orig = glob(strcat('*_',task,'*nii'));
+            nFiles = length(orig);
+        else
+            tmp = char(glob(strcat(godir,filesep,'*nii')));
+            nFiles = length(tmp);
+            [throw orig ext] = fileparts(tmp(1,:));
+            orig = {strcat(orig,ext)};
+        end
     %orig = ls(strcat('*_',task,'*nii'));    
     if nFiles < 100 ; % if the file has been split, then there are tons of nii files and this length will be crazy long
+    godir = char(strcat(subj_folder));  
     orig = fullfile(godir,orig{1});
     %orig = strcat(godir,filesep,'raw',filesep,orig);
-    %orig = char(strcat(godir,filesep,'raw',filesep,subj,'_',task,'*nii'))%original file
-    
+    %orig = char(strcat(godir,filesep,'raw',filesep,subj,'_',task,'*nii'))%original file  
     cd (godir)
     check = strcat(subj,'*_050.nii');
     check_4d = rdir(check);
@@ -68,6 +72,7 @@ for k = 1:length(subj_names);
     else
        fprintf ('%s already split.\n', subj);
     end %Too many files;already processed
+    end
 end 
 
 
