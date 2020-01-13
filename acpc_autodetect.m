@@ -22,6 +22,10 @@ if isempty(which('cfg_getfile'))
     addpath([spmDir,filesep, 'toolbox/OldNorm']);
 end
 
+%% Keep MATLAB happy with FSL settings
+tmp=sprintf('sh -c ". ${FSLDIR}/etc/fslconf/fsl.sh; FSLOUTPUTTYPE=NIFTI_PAIR; export FSLOUTPUTTYPE; $FSLDIR/bin/fslcreatehd %d %d %d %d %6.4f %6.4f %6.4f %6.4f 0 0 0 %d %s"',dims(1),dims(2),dims(3),dims(4),vsize(1),vsize(2),vsize(3),vsize(4),dtype,fname);
+system(tmp);
+
 %% Select images
 if ~exist('images','var')
     imglist=spm_select([1,Inf],'image','Choose MRI you want to set AC-PC');
