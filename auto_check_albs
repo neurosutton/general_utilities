@@ -12,7 +12,7 @@
 
 pswd=`cat /home/brianne/.key`
 tmp_mnt='/mnt/threetbrain'
-sort_files='/home/brianne/tools/general_utilities/sort_files'
+sort_files='/home/brianne/tools/general_utilities/sort_files_albs'
 cron_test='no'
 debug='no'
 dt=`date +"%Y%m%d"`
@@ -21,38 +21,27 @@ if [[ "$cron_test" == 'yes' ]] ; then
 else
 #Create a dictionary of the directories
 declare -A dir_dict
-dir_dict=(["Legget_ASDX"]="asdx" ["Legget_EXO"]='exobk' ["Legget_Priming"]='priming' ["Legget_TRN"]='trn' ["Legget_AW"]='awesome' ["Bear_ESES"]='eses')
+dir_dict=(["Dabelea_ECHO"]='echo') # Can add ["Dabelea_HealthyStart"]="hs"
 declare -A task_dict
-task_dict=(['asdx']="{'triangle'}" ['exobk']="{'fp_run1' 'fprun2' 'rest' }" ['priming']="{'fp_run1' 'fprun2' 'priming'}" ['trn']="{'triangle'}" ['awesome']="{'oddball' 'fp_run1' 'fp_run2' 'rest'}" ['eses']="{'rest'}")
+task_dict=( ['echo']="{'rest'}" ) # For example syntax: ['priming']="{'fp_run1' 'fprun2' 'priming'}"
 
-dir_dict=(["Bear_ESES"]='eses')
-task_dict=(['eses']="{'rest'}")
-
+# Mount the 3T server
 mount -t cifs -o username=mruser,password=${pswd},vers=1.0 //140.226.17.61/X ${tmp_mnt}
 
+# Loop through the dir_dict to gather the new scan files
 for dk in "${!dir_dict[@]}"; do
   echo 'Checking' ${dk}
   dest_dir=`echo /data/images/${dir_dict[$dk]}`
-#  rm ${dest_dir}/subj_to_proc.txt 2> /dev/null
+  rm ${dest_dir}/subj_to_proc.txt 2> /dev/null
 
   #Locate the files on the remote server that have been updated.
-  if [ $# -eq 0 ] ; then
-      files=`find ${tmp_mnt}/${dk}* -maxdepth 1 -newermt '48 months ago' -type d`
-  else
-      files=`find ${tmp_mnt}/${dk}*/*${1}* -maxdepth 1 -newermt '48 months ago' -type d`
-  fi
-
+  files=`find ${tmp_mnt}/${dk}* -maxdepth 1 -newermt '9 days ago' -type d`  # Change to logical interval
   for f in ${files[@]}; do
-      if [ $# -ge 1 ] ; then
-	  # Trim the directory name back to subject level to match original logic for naming conventions.
-	  f=`echo ${f} | rev | cut -d/ -f2- | rev`
-      fi
-   orig=`echo ${f} | rev | cut -d/ -f1 | rev`
-   echo $orig
-   if [[ "${orig}" != *"${dk}"* ]] ; then
+    orig=`echo ${f} | rev | cut -d/ -f1 | rev`
+    if [[ "${orig}" != *"${dk}"* ]] ; then
 	# The conditional is necessary to avoid copying the entire study directory
       timept=`echo ${orig} | cut -d_ -f3`
-      name=`echo ${orig} | cut -d_ -f1-2`
+      name=`echo ${orig} | cut -d_ -f2`
       rplc=`echo ${name,,} | sed -e 's,_,'',g'` # Get the lowercase prefix to combine with the timepoint
 
       if [[ "${debug}" == "yes" ]]; then
@@ -60,29 +49,23 @@ for dk in "${!dir_dict[@]}"; do
 	  [ ${#timept} -lt 2 ] && echo "${timept} is not a double digit" || echo false
       fi
 
-
-# Get the number of folders already matching the "new" scan name.
-# If there are matches, then copying will not be done to avoid messing with the naming scheme or overwriting already aligned or processed files.
-      check1=`ls -d ${dest_dir}/${name}*/* 2>/dev/null | wc | awk '{print $1}'`
-      check2=`ls -d ${dest_dir}/${name,,}*/* 2>/dev/null | wc | awk '{print $1}'`
-      ls -d ${dest_dir}/${name}*/* 2>/dev/null
-      ls -d ${dest_dir}/${name,,}*/* 2>/dev/null
-
       if [[ ! -z "${timept}" && ${#timept} -lt 2 ]] ; then
 	  # Not all studies may have timepoints. Provide a renaming scheme for those that do
 	  name=`echo ${orig} | cut -d_ -f1-3` # The timepoint needs to be added back into the name for the checks, b/c the delimited field was a timepoint
-	  check3=`ls -d ${dest_dir}/${rplc}_${timept}*/* 2>/dev/null | wc | awk '{print $1}'`
-	  ls -d ${dest_dir}/${rplc}_${timept}*/* 2>/dev/null
+	  check3=`ls -d ${dest_dir}/${rplc}_${timept}* 2>/dev/null | wc | awk '{print $1}'`
       else
 	  # If there are a lot more numbers or no numbers in "timept", then this delimited field was not a timepoint and needs to be disregarded.
 	  if [[ "${debug}" == "yes" ]]; then
 	      [ ! -z ${timept} ] && echo "timept variable exists" || echo "timept variable does not exist"
 	      [ ${#timept} -gt 2 ] && echo "timept is at least double digit" || echo false
 	  fi
-	  check3=`ls -d ${dest_dir}/${rplc}*/* 2>/dev/null | wc | awk '{print $1}'`
-	  ls -d ${dest_dir}/${rplc}*/* 2>/dev/null
+	  check3=`ls -d ${dest_dir}/${rplc}* 2>/dev/null | wc | awk '{print $1}'`
       fi
 
+# Get the number of folders already matching the "new" scan name.
+# If there are matches, then copying will not be done to avoid messing with the naming scheme or overwriting already aligned or processed files.
+      check1=`ls -d ${dest_dir}/${name}* 2>/dev/null | wc | awk '{print $1}'`
+      check2=`ls -d ${dest_dir}/${name,,}*  2>/dev/null | wc | awk '{print $1}'`
       checks=$(( ${check1} + ${check2} + ${check3} ))
 	  if [[ "${debug}" == "yes" ]]; then
 	      echo "${check1}+${check2}+${check3}=${checks}"
@@ -91,21 +74,20 @@ for dk in "${!dir_dict[@]}"; do
       if [[ "${checks}" -ge 1 ]] ; then
 	  echo "${f} already copied : checks x's ${checks}"
       else
-	  echo "Copying ${f} may take a while. Please be patient."
-	  rsync -rzv ${f} ${dest_dir}  # Use rsync to reduce accidental re-copying.
-
-	  if [[ ${orig} != ${name} ]] ; then
-	      mv ${dest_dir}/${orig} ${dest_dir}/${name} # Rename the directory according to new convention
-	  elif [[ ${orig} == ${name} ]] ; then
-	      echo "Naming all set"
-	  fi
-
+	  echo "Copying may take a while. Please be patient."
+	  rsync -rz ${f} ${dest_dir}  # Use rsync to reduce accidental re-copying.
+	  mv ${dest_dir}/${orig} ${dest_dir}/${name} # Rename the directory according to new convention
 	  echo ${name} ${dt} 'manual' >> ${dest_dir}/cron_trxfr.txt
+      fi
+      if [[ `ls -ld ${dest_dir}/${name}* | grep "root" | wc` > 0  ]]; then
+	  echo "Changing permissions"
 	  chmod 775 -R ${dest_dir}/${name}
-	  chgrp users -R ${dest_dir}/${name}
+	  chown allie:wustl_cleared -R ${dest_dir}/${name}
+	  #chgrp users -R ${dest_dir}/${name}
 	  chmod g+s ${dest_dir}/${name}
       fi
       echo ${name} >> ${dest_dir}/subj_to_proc.txt # Send the new, lowercase name to a text file to make the next process easier.
+      chmod 775 ${dest_dir}/subj_to_proc.txt
     fi
   done
 done

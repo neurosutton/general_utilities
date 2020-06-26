@@ -23,7 +23,7 @@
 # Add study names and files starting ~ln110                #
 # Author: Brianne Sutton, PhD         Date: 8.3.2017       #
 #
-# Revision 6.2019 BMS                                      #
+# Revision 06.2019 BMS                                     #
 # Added compatibility for new drive at the BIC, including  #
 # new folder naming scheme and naming conversion rules.    #
 ############################################################
@@ -60,25 +60,20 @@ else
   fi
 
   echo "Searching for dicom files in ${home}/${individ}"
-  if [[ $(ls ${home}/${individ}/dicom) > 0 ]] ; then
-    subjs1=($(ls -d ${home}/${individ}/dicom )) #|| ls -d ${home}/subjects/*/dicom)) #Searches two levels to find all subjects
-  else
-    echo "Didn't find ${home}/${individ}/dicom. Searching other folders."
+
+  if [[ $(find ${home}/${individ} -name "*dcm" 2>/dev/null | head -n 2) > 0 ]] ; then
+    subjs1=($(find ${home}/${individ} -name "*dcm" | rev | cut -d/ -f3- | rev | uniq))
+    echo "Found ${#subjs1[@]} non-standard dcm folders"
   fi
-  if [[ $(find ${home}/${individ} -name "*dcm") > 0 ]] ; then
-    subjs2=($(find ${home}/${individ} -name "*dcm" | rev | cut -d/ -f3- | rev | uniq))
-    echo "Found ${#subjs2[@]} non-standard dcm folders"
-  fi
-  if [[ $(find ${home}/${individ} -name "*IMA") > 0 ]] ; then
-    subjs3=($(find ${home}/${individ} -name "*IMA" | rev | cut -d/ -f3- | rev | uniq))
-    echo "Found ${#subjs3[@]} IMA folders"
+  if [[ $(find ${home}/${individ} -name "*IMA" 2>/dev/null | head -n 2 ) > 0 ]] ; then
+    subjs2=($(find ${home}/${individ} -name "*IMA" | rev | cut -d/ -f3- | rev | uniq))
+    echo "Found ${#subjs2[@]} IMA folders"
   fi
 
-  subjs=(${subjs1[@]} ${subjs2[@]} ${subjs3[@]})
+  subjs=(${subjs1[@]} ${subjs2[@]})
+  subjs=($(printf "%s\n" "${subjs[@]}" | sort -u)) # De-duplicates the list.
 
-  # Originally used this line, but June 2019 can't figure out why... home=`echo ${subjs[0]} | rev | cut -d/ -f3- | rev` #intentionally redefine
-
-  echo "Found ${#subjs[@]} subject directories"
+  echo "Found ${#subjs[@]} subject directories to convert"
 
   ################# Renaming directories #######################
   for subj in "${subjs[@]}"; do
@@ -106,11 +101,14 @@ else
         elif [ $timept == "4" ] ; then
           timeDict="d"
         fi
-        name=`echo ${study,,}${num}_${timept}` #The new name for the subject
+	echo ""
+        #name=`echo ${study,,}${num}_${timept}` #The new name for the subject
       else
-        name=`echo ${study,,}${num}` #Does not code any timepoint
+        echo "Uncomplicated timepoint"
+        #name=`echo ${study,,}${num}` #Does not code any timepoint
       fi
 
+      name=`echo ${num}` # PID only, specifically for ALBS 2020
       echo "New name is ${name,,}"
       new_dir=${home}/${name,,}
       echo " mv $subj_dir $new_dir"
@@ -119,6 +117,8 @@ else
     else
       name=`echo ${oldName}` #Loop if the subject has already been converted
     fi
+
+    # Make sure old names and copies are eliminated.
     if [[ -d ${subj_dir^^} ]] || [[ -d ${subj_dir^^}/${name^^} ]] ; then
       rm -rf ${subj_dir^^}
       rm -rf ${subj_dir^^}/${name^^}
@@ -127,10 +127,10 @@ else
 
     #################### Processing ##########################
     echo "Working with ${subj_dir}"
-    if [ ! -d ${subj_dir}/raw_dir ] ; then
-      mkdir ${subj_dir}/raw_dir
+    if [ ! -d ${subj_dir}/raw ] ; then
+      mkdir ${subj_dir}/raw
     fi
-    raw_dir=`echo ${subj_dir}/raw_dir`
+    raw_dir=`echo ${subj_dir}/raw`
 
     #Run dcm2niix if the format is still dicom
     if ls ${raw_dir}/*nii* 1> /dev/null 2>&1 ; then
@@ -145,8 +145,15 @@ else
       #fi
     fi
 
-    rm ${subj_dir}/raw_dir/AA* 1> /dev/null 2>&1 # Scout images that are unnecessary
-    rm ${subj_dir}/raw_dir/*_MPR_* 1> /dev/null 2>&1 # extra, multi-planar reconstructions that are unnecessary
+    if [[ -e ${subj_dir}/${origDirName} ]] ; then
+	rm -rf ${subj_dir}/${origDirName} # Not keeping dicom files
+    fi
+
+    rm ${raw_dir}/AA* 1> /dev/null 2>&1 # Scout images that are unnecessary
+    rm ${raw_dir}/*_MPR_* 1> /dev/null 2>&1 # extra, multi-planar reconstructions that are unnecessary
+    rm ${raw_dir}/*localizer* 1> /dev/null 2>&1
+    rm ${raw_dir}/*dixon* 1> /dev/null 2>&1
+    rm ${raw_dir}/*cycle* 1> /dev/null 2>&1
 
     ###################### Edit here #######################
     # Basic scheme = add the project directory name as an if statement,
@@ -155,24 +162,8 @@ else
 
     #Sort the gzip files
     if [ -z ${task} ] ; then
-      if [ ${proj} == "exobk" ] ; then
-        scan_names=("ddisc" "fp" "t1")
-      elif [ ${proj} == "exw" ] ; then
-        scan_names=("ddisc" "rest" "fp" "t1" "asl")
-      elif [ ${proj} == "priming" ] ; then
-        scan_names=("t1" "rest" "fp" "asl" "priming")
-      elif [ ${proj} == "eats_shomaker" ] ; then
-        scan_names=("t1" "rest" "fp")
-      elif [ ${proj} == "All_Files" ] ; then #Allie's
-        scan_names=("rest")
-      elif [ ${proj} == "asl_testing" ]; then
-        scan_names=("asl" "t1")
-      elif [ ${proj} == "asdx" ] || [ ${proj} == "trn" ] ; then
-        scan_names=("triangle" "t1" "rest")
-      elif [ ${proj} == "ross_bch" ] ; then
-        scan_names=("t1" "t2" ) #"rest")
-      elif [ ${proj} == "bold" "BOLD" ] ; then
-	scan_names=
+      if [ ${proj} == "echo" ] ; then
+        scan_names=("t1" "rest")
       else
         echo "******Project directory not previously defined in the script*****"
         echo "Quiting."
@@ -184,7 +175,7 @@ else
     ######################## Jump down ten lines ########################
 
 
-    if [ $scan_names == "" ] ; then
+    if [[ $scan_names == "" ]] ; then
       echo "Did not figure out which scans to process for $proj"
       echo "Quitting"
       exit
@@ -197,30 +188,13 @@ else
         ###############################################################
         # Might need to add here, if the study hasn't been added yet  #
         ###############################################################
-        if  [[ ${scan_name} == "ddisc" ]] ; then
-          findName="dis"
-          nvols=189 # Length of scan corresponding to the task. Allows the script
-          # to check that it is only copying complete runs.
-        elif [[ ${scan_name} == "t1" ]] ; then
+        if [[ ${scan_name} == "t1" ]] ; then
           findName="*mprage*"
           #findName="*SPGR*"
           nvols=1
-        elif [[ ${scan_name} == "fp" ]] ; then
-          findName="food"
-          nvols=172
-          #nvols=204
         elif [[ ${scan_name} == "rest" ]] ; then
           findName="rest"
-          nvols=300
-        elif [[ "${scan_name}" == "triangle" ]] ; then
-          findName="Triangle"
-          nvols=336
-        elif [[ "${scan_name}" == "asl" ]] ; then
-          findName="tgse"
-          nvols=1
-	elif [[ "${scan_name}" == "priming" ]] ; then
-	  findName="priming"
-	  nvols=328
+          nvols=238
         else
           findName=${scan_name}
         fi
@@ -230,10 +204,15 @@ else
         if [[ ${#runs[@]} > 0 ]] ; then
       	  for (( j=0; ${j}<=${#runs[@]}; j++ )); do
             ndim3=`fslinfo ${runs[${j}]} | grep "dim3" | awk 'NR==1{print $2}'` # Flattened mosaics won't work and should be eliminated by checking the third dimension
-      	    if [[ ${ndim3} -lt 2 ]] ; then
+	          nvols_run=`fslnvols ${runs[${j}]}` # For odd "Eq" dicom conversions. Still need to check the number of volumes later to verify that the run fits the expected criteria.
+      	    if [[ ${ndim3} -lt 2 || ${nvols_run} -lt 1 || ${nvols_run} -ne ${nvols} ]] ; then
                unset runs[$j]
             fi
 	  done
+
+          # Make sure that the runs are in numerical order.
+	    IFS=$'\n' runs=($(sort <<<"${runs[*]}"))
+	    unset IFS
 
           #Check for the directory
           echo ""
@@ -245,15 +224,9 @@ else
               echo "${subj_dir} already copied"
             else
               echo "Finding correct file to copy for ${scan_name}:"
-
-              # if file size was dependable, use this.
-              #find ${subj_dir} -iname "*${scan_name}*nii*" -type f | xargs du | sort -n | head -n 1 | cut -d/ -f2`
-              mvFile=`find ${raw_dir} -iname "*${findName}*nii*" -type f |  sed '/^[[:space:]]*$/d'| xargs du | tail -n1 | cut -f2 | rev | cut -d/ -f1 | rev`
-	      nvol_mvFile=`fslnvols ${raw_dir}/${mvFile}`
+      	      mvFile=`echo ${runs[@]} | rev | cut -d/ -f1 | rev `
+      	      nvol_mvFile=`fslnvols ${raw_dir}/${mvFile}`
               echo "${mvFile} has ${nvol_mvFile} volumes"
-              if [[ ${nvols} -ne ${nvol_mvFile} ]] ; then
-                mvFile="" #Don't want to pull this one forward, because it doesn't have the right number of volumes (and may not be the sequence that is expected.
-              fi
 
               if [[ "${mvFile}" != "" ]] ; then
                 echo "Match!"
@@ -261,61 +234,67 @@ else
                   mkdir ${subj_dir}/${scan_name}
                 fi
 
-                mvFile=`echo ${raw_dir}/${mvFile}`
-                dt=`echo ${mvFile} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
-                series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
-                ext=`echo ${mvFile} | cut -d. -f2-` #can be nii or nii.gz
-                #macdt=`echo ${mvFile} | rev |  cut -d. -f2- | rev | cut -d_ -f1`
+                mvFile=`echo ${raw_dir}/${mvFile}` # Original nii in the raw directory
+		base=`echo ${mvFile} | awk -F '.nii.gz' '{for (i=1; i<=NF; i++) printf("%s", $i)}'` # aka PID
+                #dt=`echo ${mvFile} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
+                #series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+                ext=`echo ${mvFile} | rev | cut -d. -f1-2 | rev` #can be nii or nii.gz
 
-                cp ${mvFile} ${subj_dir}/${scan_name}/${name,,}_${scan_name}_${series}_${dt}.${ext}
-                gunzip ${subj_dir}/${scan_name}/${name,,}_${scan_name}_${series}_${dt}.${ext}
-                acpc=`ls ${subj_dir}/${scan_name}/${name,,}_${scan_name}_${series}_${dt}.nii`
+                cp ${mvFile} ${subj_dir}/${scan_name}/${name,,}_${scan_name}.${ext}
+		            cp ${base}.json ${subj_dir}/${scan_name}
+                gunzip ${subj_dir}/${scan_name}/${name,,}_${scan_name}.${ext}
+                acpc=`ls ${subj_dir}/${scan_name}/${name,,}_${scan_name}.nii`
                 echo "matlab -nosplash -nodisplay -r 'addpath($addpth); acpc_autodetect('$acpc'); quit'"
                 matlab -nosplash -nodisplay -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
 
               fi
             fi
 
-          elif [ ${scan_name} == "asl" ] || [ ${scan_name} == "t1" ] ; then  #For multiple runs
+          elif  [ ${scan_name} == "prod_asl" ] || [ ${scan_name} == "rel_cbf" ] || [ ${scan_name} == "t1" ] ; then  #For multiple runs
             if ls ${subj_dir}/${scan_name}/*nii 1> /dev/null 2>&1 ; then
               echo "${subj_dir} already copied"
             else
               echo "Finding correct file to copy for ${scan_name}:"
-              if [ ${scan_name} == "asl" ] ; then
-                specName=`echo ${runs[-1]}` # to find the last one
+              if  [ ${scan_name} == "prod_asl" ] || [ ${scan_name} == "rel_cbf" ] ; then
+		#  echo "Picking the last run from:"
+		#  echo ${runs[@]}
+                  specName=`echo ${runs[-1]}` # to find the last one
+		#  echo ${specName}
               else
                 echo ${runs}
                 specName=`echo ${runs[0]}`
               fi
 
-              if [ ! -d ${subj_dir}/${scan_name} ] ; then
-                mkdir ${subj_dir}/${scan_name}
-              fi
+	      if [[ "${specName}" != '' ]] ; then
+		  if [ ! -d ${subj_dir}/${scan_name} ] ; then
+                      mkdir ${subj_dir}/${scan_name}
+		  fi
 
-              echo $specName
-              #mac  dt=`echo ${specName} | rev |  cut -d. -f2- |cut -d/ -f1 | rev|  cut -d_ -f1`
+		  echo $specName
 
-              dt=`echo ${specName} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
-              ext=`echo ${specName} | rev | cut -c1-7 | rev | cut -d. -f2-` #b/c some of the images have . maddeningly sprinkled throughout
-              series=`echo ${specName}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
-              cp ${specName} ${subj_dir}/${scan_name}/${name,,}_${scan_name}_${series}_${dt}.${ext}
-              gunzip ${subj_dir}/${scan_name}/${name,,}_${scan_name}_${series}_${dt}.${ext}
-              acpc=`ls ${subj_dir}/${scan_name}/${name,,}_${scan_name}_${series}_${dt}.nii`
-              echo "matlab -nosplash -nodisplay -r 'addpath($addpth); acpc_autodetect('$acpc'); quit'"
-              matlab -nosplash -nodisplay -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
+		  #dt=`echo ${specName} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
+		  ext=`echo ${specName} | rev | cut -c1-7 | rev | cut -d. -f2-` #b/c some of the images have . maddeningly sprinkled throughout
+		  #series=`echo ${specName}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+
+		  cp ${specName} ${subj_dir}/${scan_name}/${name,,}_${scan_name}.${ext}
+		  gunzip ${subj_dir}/${scan_name}/${name,,}_${scan_name}.${ext}
+		  acpc=`ls ${subj_dir}/${scan_name}/${name,,}_${scan_name}.nii`
+		  echo "matlab -nosplash -nodisplay -r 'addpath($addpth); acpc_autodetect('$acpc'); quit'"
+		  matlab -nosplash -nodisplay -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
+	      fi
             fi
-          else
+          else # if there are more than one matching run
 
             m=0 #initialize counter for matched runs
             for (( j=0; ${j}<=${#runs[@]}; j++ )) ; do
 
               mvFile=`echo ${runs[${j}]}`
               if  [[ ${mvFile} != "" ]] ; then
-                echo ${mvFile}
+                #echo "Checking that ${nvols} in ${mvFile}"
                 nvol_mvFile=`fslnvols ${mvFile}`
                 if [[ ${nvols} -ne ${nvol_mvFile} ]] ; then
-                  mvFile="" #Don't want to pull this one forward, because it doesn't have the right number of volumes (and may not be the sequence that is expected.
                   echo "${mvFile} has ${nvol_mvFile} volumes"
+                  mvFile="" #Don't want to pull this one forward, because it doesn't have the right number of volumes (and may not be the sequence that is expected.
                   echo "Double-check that the script is looking for the correct number of volumes."
                 fi
 
@@ -330,20 +309,21 @@ else
                   n=$(($m+1))
                   echo "${scan_name} file ${n} is a match!"
                   if ls ${subj_dir}/${scan_name}_run${n}/*nii 1> /dev/null 2>&1 ; then
-                    ls ${subj_dir}/${scan_name}_run${n}/*nii
+                    #ls ${subj_dir}/${scan_name}_run${n}/*nii
                     echo "${subj_dir} run${n} already copied"
                   else
                     if [ ! -d ${subj_dir}/${scan_name}_run${n} ] ; then
                       echo "Creating ${scan_name}_run${n} directory"
                       mkdir ${subj_dir}/${scan_name}_run${n}
                     fi
-
-                    dt=`echo ${mvFile} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
-                    series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+		                base=`echo ${mvFile} | awk -F '.nii.gz' '{for (i=1; i<=NF; i++) printf("%s", $i)}'`
+                    #dt=`echo ${mvFile} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
+                    #series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
                     ext=`echo ${mvFile} | cut -d. -f2-` #can be nii or nii.gz
-                    cp ${mvFile} ${subj_dir}/${scan_name}_run${n}/${name,,}_${scan_name}run${n}_${series}_${dt}.${ext}
-                    gunzip ${subj_dir}/${scan_name}_run${n}/${name,,}_${scan_name}run${n}_${series}_${dt}.${ext}
-                    acpc=`ls ${subj_dir}/${scan_name}_run${n}/${name,,}_${scan_name}run${n}_${series}_${dt}.nii`
+                    cp ${mvFile} ${subj_dir}/${scan_name}_run${n}/${name,,}_${scan_name}run${n}.${ext}
+		                cp ${base}.json ${subj_dir}/${scan_name}_run${n}/.
+                    gunzip ${subj_dir}/${scan_name}_run${n}/${name,,}_${scan_name}run${n}.${ext}
+                    acpc=`ls ${subj_dir}/${scan_name}_run${n}/${name,,}_${scan_name}run${n}.nii`
                     matlab -nosplash -nodisplay -r "addpath($addpth); acpc_autodetect('$acpc'); quit"
                   fi
                   m=${n}

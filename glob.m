@@ -1,3 +1,4 @@
+
 %% Expand wildcards for files and directory names
 %
 %   Pattern matching of file and directory names, based on wildcard
@@ -102,17 +103,14 @@
 %       an infinite loop.
 %
 % See also dir
-
 %% Last modified
 %   $Date: 2013-02-02 18:41:41 +0100 (Sat, 02 Feb 2013) $
 %   $Author: biggelar $
 %   $Rev: 12966 $
-
 %% History
 %   2013-02-02  biggelar    submitted to Matlab Central
 %   2013-01-11  biggelar    add {} wildcards
 %   2013-01-02  biggelar    Created
-
 %% Copyright (c) 2013, Peter van den Biggelaar
 % All rights reserved.
 % 
@@ -137,11 +135,8 @@
 % CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
 % ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 % POSSIBILITY OF SUCH DAMAGE.
-
-
 % ------------------------------------------------------------------------
 function [LIST, ISDIR] = glob(FILESPEC, ignorecase)
-
 %% check FILESPEC input
 if ischar(FILESPEC)
     if isempty(FILESPEC)
@@ -155,7 +150,6 @@ if ischar(FILESPEC)
 else
     error('glob:invalidInput', 'FILESPEC must be a string.')
 end    
-
 %% check ignorecase option
 if nargin==2
     if ischar(ignorecase)
@@ -173,17 +167,14 @@ else
     % Unix is case sensitive
     ignorecase = ispc;
 end
-
 %% define function handle to regular expression function for the specified case sensitivity
 if ignorecase
     regexp_fhandle = @regexpi;
 else
     regexp_fhandle = @regexp;
 end
-
 %% only use forward slashes as file separator to prevent escaping backslashes in regular expressions
 filespec = strrep(FILESPEC, '\', '/');
-
 %% split pathroot part from FILESPEC
 if strncmp(filespec, '//',2)
     if ispc
@@ -213,28 +204,22 @@ else
     % FILESPEC specifies a relative path
     pathroot = './';
 end
-
 %% replace multiple file separators by a single file separator
 filespec = regexprep(filespec, '/+', '/');
-
 %% replace 'a**' with 'a*/**', where 'a' can be any character but not '/'
 filespec = regexprep(filespec, '([^/])(\.\*\.\*)', '$1\*/$2');
 %% replace '**a' with '**/*a', where a can be any character but not '/'
 filespec = regexprep(filespec, '(\.\*\.\*)([^/])', '$1/\*$2');
-
 %% split filespec into chunks at file separator
 chunks = strread(filespec, '%s', 'delimiter', '/'); %#ok<FPARK>
-
 %% add empty chunk at the end when filespec ends with a file separator
 if ~isempty(filespec) && filespec(end)=='/'
     chunks{end+1} = '';
 end
-
 %% translate chunks to regular expressions
 for i=1:numel(chunks)
     chunks{i} = glob2regexp(chunks{i});
 end
-
 %% determine file list using LS_REGEXP
 % this function requires that PATHROOT does not to contain any wildcards
 if ~isempty(chunks)
@@ -242,23 +227,19 @@ if ~isempty(chunks)
 else
     list = {pathroot};
 end
-
 if strcmp(pathroot, './')
     % remove relative pathroot from result
     list = regexprep(list, '^\./', '');
 end
-
 if nargout==2
     % determine directories by checking for '/' at the end
     I = regexp(list', '/$');
     ISDIR = ~cellfun('isempty', I);
 end
-
 %% convert to standard file separators for PC
 if ispc
     list = strrep(list, '/', '\');
 end
-
 %% return output
 if nargout==0
     if ~isempty(list)
@@ -270,16 +251,12 @@ if nargout==0
 else
     LIST = list';
 end
-
-
 % ------------------------------------------------------------------------
 function regexp_str = glob2regexp(glob_str)
 %% translate glob_str to regular expression string
-
 % initialize
 regexp_str  = '';
 in_curlies  = 0;        % is > 0 within curly braces
-
 % handle characters in glob_str one-by-one
 for c = glob_str
         
@@ -298,11 +275,9 @@ for c = glob_str
     elseif c=='{'
         regexp_str = [regexp_str '(']; %#ok<AGROW>
         in_curlies = in_curlies+1;    
-
     elseif c=='}' && in_curlies
         regexp_str = [regexp_str ')']; %#ok<AGROW>
         in_curlies = in_curlies-1;    
-
     elseif c==',' && in_curlies
         regexp_str = [regexp_str '|']; %#ok<AGROW>
             
@@ -310,12 +285,8 @@ for c = glob_str
         regexp_str = [regexp_str c]; %#ok<AGROW>
     end
 end
-
 % replace original '**' (that has now become '[^/]*[^/]*') with '.*.*'  
 regexp_str = strrep(regexp_str, '[^/]*[^/]*', '.*.*');
-
-
-
 % ------------------------------------------------------------------------
 function L = ls_regexp(regexp_fhandle, path, varargin)
 % List files that match PATH/r1/r2/r3/... where PATH is a string without
@@ -369,7 +340,6 @@ else
             trailing_fsep(list_isdir) = {'/'};
             L = strcat(path, list_name, trailing_fsep);
         end
-
     elseif nargin==3    % last regular expression
         %% return list_name matching regular expression
         I = regexp_fhandle(list_name, ['^' varargin{1} '$']);
@@ -404,12 +374,9 @@ else
         end
     end
 end
-
-
 % ------------------------------------------------------------------------
 function L = ls_regexp_tree(regexp_fhandle, path, varargin)
 % use this function when first argument of varargin contains '**'
-
 % build list of complete directory tree
 % if any regexp starts with '\.', keep hidden files and directories
 I = regexp(varargin, '^\\\.');
@@ -417,14 +384,11 @@ I = ~cellfun('isempty', I);
 keep_hidden = any(I);
 list = dir_recur(path, keep_hidden);
 L = {list.name};
-
 % make one regular expression of all individual regexps
 expression = [regexptranslate('escape',path) sprintf('%s/', varargin{1:end-1}) varargin{end}];
-
 % note that /**/ must also match zero directories
 % replace '/**/' with (/**/|/)
 expression = regexprep(expression, '/\.\*\.\*/', '(/\.\*\.\*/|/)');
-
 % return matching names
 if ~isempty(varargin{end})
     % determing matching names ignoring trailing '/'
@@ -436,16 +400,11 @@ else
 end
 I = cellfun('isempty', I);
 L(I) = [];
-
-
-
 % ------------------------------------------------------------------------
 function d = dir_recur(startdir,keep_hidden)
 %% determine recursive directory contents
-
 % get directory contents
 d = dir(startdir);
-
 % remove hidden files
 if keep_hidden
     % only remove '.' and '..'
@@ -455,7 +414,6 @@ else
     % remove all hidden files and directories
     d(strncmp({d.name},'.',1)) = [];
 end
-
 if ~isempty(d)
     % add trailing fileseparator to directories
     trailing_fsep = repmat({''}, size(d));

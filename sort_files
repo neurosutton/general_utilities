@@ -32,6 +32,7 @@ prog=${0}
 proj=${1}
 subj=${2} #Bizarrely, if you enter an asterisk before the number, bash grabs the first ls instance automatically
 task=${3}
+skip_rename="no"
 hdr=`which fslhd`
 n_vols=`which fslnvols`
 addpth="'/home/brianne/tools/general_utilities'" #acpc_detect is here
@@ -75,45 +76,68 @@ else
 
   echo "Found ${#subjs[@]} subject directories to convert"
 
+  if [ ${#subjs[@]} == 0 ]; then
+      subjs=($(find ${home}/${individ} -name "*nii*" | rev | cut -d/ -f3- | rev | uniq ))
+      skip_rename="yes"
+  fi
+
   ################# Renaming directories #######################
   for subj in "${subjs[@]}"; do
-    #subj_dir=`echo ${subj}| rev | cut -d/ -f2- | rev` #to accomodate multiple, potential directory levels
-    oldName=`echo ${subj##${home}} | cut -d/ -f2 ` # syntax to delete longest match of pattern from the beginning
-    subj_dir=`echo ${home}/${oldName}`
-    origDirName=`echo ${subj##${home}} | cut -d/ -f3- ` # need the final directory to point to dicom or another dicom containing folder, per the $subj[@]
+      if [[ ${skip_rename} == "no" ]] ; then
+	  #subj_dir=`echo ${subj}| rev | cut -d/ -f2- | rev` #to accomodate multiple, potential directory levels
+	  oldName=`echo ${subj##${home}} | cut -d/ -f2 ` # syntax to delete longest match of pattern from the beginning
+	  subj_dir=`echo ${home}/${oldName}`
+	  origDirName=`echo ${subj##${home}} | cut -d/ -f3- ` # need the final directory to point to dicom or another dicom containing folder, per the $subj[@]
 
-    if [[ $oldName == *"."* ]]; then
-      study=`echo ${oldName} | cut -d. -f1`
-      num=`echo ${oldName} | cut -d. -f2`
-      timept=`echo ${oldName} | cut -d. -f3`
-    elif [[ "$oldName" =~ [A-Z] ]]; then
-      study=`echo ${oldName} | cut -d_ -f1`
-      num=`echo ${oldName} | cut -d_ -f2`
-      timept=`echo ${oldName} | cut -d_ -f3`
-      if [ ! -z $timept ]; then
-        #Array
-        if [ $timept == "1" ] ; then
-          timeDict="a"
-        elif [ $timept == "2" ] ; then
-          timeDict="b"
-        elif [ $timept == "3" ] ; then
-          timeDict="c"
-        elif [ $timept == "4" ] ; then
-          timeDict="d"
-        fi
-        name=`echo ${study,,}${num}_${timept}` #The new name for the subject
+	  if [[ $oldName == *"."* ]]; then
+	      study=`echo ${oldName} | cut -d. -f1`
+	      num=`echo ${oldName} | cut -d. -f2`
+	      timept=`echo ${oldName} | cut -d. -f3`
+	  elif [[ "$oldName" =~ [A-Z] ]]; then
+	      # For folders that only have one underscore, figure out if the second field is a timepoint or subject number.
+	      check_naming_type=`echo ${oldName} | cut -d_ -f3`
+	      echo ${check_naming_type}
+	      if [[ $#{check_naming_type} != 1 ]] ; then
+		 study=`echo ${oldName} | cut -d_ -f1`
+		 num=`echo ${oldName} | cut -d_ -f2`
+		 timept=`echo ${oldName} | cut -d_ -f3`
+	      else
+		 study=`echo ${oldName} | cut -d_ -f1`
+		 num=''
+		 timept=`echo ${oldName} | cut -d_ -f2`
+	      fi
+
+	      if [ ! -z $timept ]; then
+		  #Array
+		  if [ $timept == "1" ] ; then
+		      timeDict="a"
+		  elif [ $timept == "2" ] ; then
+		      timeDict="b"
+		  elif [ $timept == "3" ] ; then
+		      timeDict="c"
+		  elif [ $timept == "4" ] ; then
+		      timeDict="d"
+		  fi
+		  name=`echo ${study,,}${num}_${timept}` #The new name for the subject
+	      else
+		  name=`echo ${study,,}${num}` #Does not code any timepoint
+	      fi
+
+	      echo "New name is ${name,,}"
+	      new_dir=${home}/${name,,}
+	      echo " mv $subj_dir $new_dir"
+	      mv $subj_dir $new_dir
+	      subj_dir=`echo $new_dir`
+	  else
+	      name=`echo ${oldName}` #Loop if the subject has already been converted
+	  fi
       else
-        name=`echo ${study,,}${num}` #Does not code any timepoint
+	  echo "Skip rename = ${skip_rename}"
+	  name=`echo ${subj##${home}} | cut -d/ -f2 ` # syntax to delete longest match of pattern from the beginning
+	  subj_dir=`echo ${home}/${name,,}`
+	  origDirName=`echo ${subj##${home}} | cut -d/ -f3- ` # need the final directory to point to dicom or another dicom containing folder, per the $subj[@]
       fi
 
-      echo "New name is ${name,,}"
-      new_dir=${home}/${name,,}
-      echo " mv $subj_dir $new_dir"
-      mv $subj_dir $new_dir
-      subj_dir=`echo $new_dir`
-    else
-      name=`echo ${oldName}` #Loop if the subject has already been converted
-    fi
     if [[ -d ${subj_dir^^} ]] || [[ -d ${subj_dir^^}/${name^^} ]] ; then
       rm -rf ${subj_dir^^}
       rm -rf ${subj_dir^^}/${name^^}
@@ -132,16 +156,20 @@ else
       echo "Skipping dcm conversion"
     else
       dcm2niix -o ${raw_dir} -f %p_%e_%4s_%t -z y ${subj_dir}/${origDirName}  #will be zipped output for storage purposes.
-
       #If want to clear dicom folder or dcm files, in FUTURE editions
-      #echo "Cleaning up files."
+    fi
+     echo "Cleaning up files."
+      nii_check=`find ${raw_dir} -name "*nii*" | wc | awk '{print $1}'`
+      if [[  ${nii_check} -gt 2 ]] && [[ ! -z ${origDirName} ]] ; then
+	  echo "rm -rf ${subj_dir}/${origDirName}"
+      else
+	  echo "dicoms already cleaned out"
+      fi
       #if [ find ${subj_dir}/dicom -name "*nii*" | wc  > 2 ] ; then
       #find ${subj_dir}/dicom -name "*dcm" | xargs rm #The list is too long to simply remove.
       #fi
-    fi
-
-    rm ${subj_dir}/raw_dir/AA* 1> /dev/null 2>&1 # Scout images that are unnecessary
-    rm ${subj_dir}/raw_dir/*_MPR_* 1> /dev/null 2>&1 # extra, multi-planar reconstructions that are unnecessary
+    rm ${raw_dir}/AA* 1> /dev/null 2>&1 # Scout images that are unnecessary
+    rm ${raw_dir}/*_MPR_* 1> /dev/null 2>&1 # extra, multi-planar reconstructions that are unnecessary
 
     ###################### Edit here #######################
     # Basic scheme = add the project directory name as an if statement,
@@ -168,6 +196,10 @@ else
         scan_names=("t1" "t2" ) #"rest")
       elif [ ${proj} == "nicotine" ] ; then
 	scan_names=("t1" "rest" "craving" "asl" "rel_cbf")
+      elif [ ${proj} == "awesome" ] ; then
+        scan_names=( "fp" "t1" "rest")
+      elif [ ${proj} == "eses" ] ; then
+        scan_names=("rest")
       else
         echo "******Project directory not previously defined in the script*****"
         echo "Quiting."
@@ -232,7 +264,8 @@ else
       	  for (( j=0; ${j}<=${#runs[@]}; j++ )); do
             ndim3=`fslinfo ${runs[${j}]} | grep "dim3" | awk 'NR==1{print $2}'` # Flattened mosaics won't work and should be eliminated by checking the third dimension
 	    nvols_run=`fslnvols ${runs[${j}]}` # For odd "Eq" dicom conversions. Still need to check the number of volumes later to verify that the run fits the expected criteria.
-      	    if [[ ${ndim3} -lt 2 || ${nvols_run} -lt 1 || ${nvols_run} -ne ${nvols} ]] ; then
+      	    if [[ ${ndim3} -lt 2 || ${nvols_run} -lt 1 || ${nvols_run} -lt ${nvols} ]] ; then
+		# May need to adjust ${nvols_run} to "-ne", if there are runs with more than the required volumes AND the exact number of required volumes. As is, the run will be processed only if it is incomplete, not if there is odd extra moco or longer scan time.
                unset runs[$j]
             fi
 	  done

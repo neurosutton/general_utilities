@@ -23,7 +23,7 @@ if isempty(which('cfg_getfile'))
 end
 
 %% Keep MATLAB happy with FSL settings
-tmp=sprintf('sh -c ". ${FSLDIR}/etc/fslconf/fsl.sh; FSLOUTPUTTYPE=NIFTI_PAIR; export FSLOUTPUTTYPE; $FSLDIR/bin/fslcreatehd %d %d %d %d %6.4f %6.4f %6.4f %6.4f 0 0 0 %d %s"',dims(1),dims(2),dims(3),dims(4),vsize(1),vsize(2),vsize(3),vsize(4),dtype,fname);
+tmp=sprintf('sh -c ". ${FSLDIR}/etc/fslconf/fsl.sh; FSLOUTPUTTYPE=NIFTI_PAIR; export FSLOUTPUTTYPE" ');
 system(tmp);
 
 %% Select images
@@ -46,7 +46,7 @@ for i=1:size(imglist,1)
     touchFile = [subjDir, filesep, 'touch_acpc.txt'];
     
     %% If manually reoriented, create the touch file
-    reorient_mat = glob([subjDir, filesep,'*reorient.mat'])
+    reorient_mat = glob([subjDir, filesep,'*reorient.mat']);
     if ~isempty(reorient_mat)
             fclose(fopen([subjDir,filesep,'touch_acpc.txt'], 'w'));
     end
@@ -99,6 +99,8 @@ for i=1:size(imglist,1)
                     update_hdr(inputImg(1), 15, 5); %[88, 143, 133]
                 case 225
                     update_hdr(inputImg(1), 8, 18); %[113, 136, 146]
+                case 233
+                    update_hdr(inputImg(1), 10, 12);
                 otherwise
                     sprintf('New dimension to consider: %s; Dim: %d\n>>> Approximating center of FOV <<<', subjImg, inputImg(1).dim(1));
                     update_hdr(inputImg(1),  0 ,0);

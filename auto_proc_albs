@@ -1,0 +1,49 @@
+#!/bin/bash
+
+###############################################################
+# Purpose: Automatically detect uploaded scans, copy them to  #
+# Big Kahuna, and begin preprocessing.                        #
+# Author: Brianne Sutton, PhD                                 #
+# Date: July 2018                                             #
+#                                                             #
+# To add studies, expand the dirrectory and task dictionaries #
+#                                                             #
+###############################################################
+
+tmp_mnt='/mnt/threetbrain'
+sort_files='/home/brianne/tools/general_utilities/sort_files_albs'
+cron_test='no'
+debug='no'
+dt=`date +"%Y%m%d"`
+if [[ "$cron_test" == 'yes' ]] ; then
+  echo "cron test done"
+else
+#Create a dictionary of the directories
+declare -A dir_dict
+dir_dict=(["Dabelea_ECHO"]='echo') # Can add ["Dabelea_HealthyStart"]="hs"
+declare -A task_dict
+task_dict=( ['echo']="{'rest'}" ) # For example syntax: ['priming']="{'fp_run1' 'fprun2' 'priming'}"
+
+# Convert from dicom to nifti, autodetect ACPC, and start preprocessing
+for dk in "${!dir_dict[@]}"; do
+  echo ">> Sorting and preprocessing files from: $dk"
+  dest=`echo ${dir_dict[$dk]}`
+  dest_dir="/data/images/${dest}"
+  if [[ -f  ${dest_dir}/subj_to_proc.txt ]] ; then
+      readarray -t subjs < ${dest_dir}/subj_to_proc.txt
+      subjs=($(printf "%s\n" "${subjs[@]}" | sort -u))
+    for s in ${subjs[@]} ; do
+      if [[ -e ${dest_dir}/tmp.txt ]] ; then
+	  rm ${dest_dir}/tmp.txt
+      fi
+      echo "Sorting files"
+      ${sort_files} ${dest} ${s}  # dicom conversion and AC-PC alignment
+      # Took out a section to automatically run through the preprocessing. 
+    done
+  fi
+done
+if [[ -e ${dest_dir}/subj_to_proc.txt ]] ; then
+    rm ${dest_dir}/subj_to_proc.txt
+fi
+fi
+exit
