@@ -32,7 +32,7 @@ function [cwd, pth_subjdirs, subjList] = file_selector(subjs)
     cwd = strip(glob([pwd,filesep,'*',subjs]),'right',filesep);
     if isempty(cwd) && contains(string(pwd),subjs)
       cwd = strip(glob(pwd),'right',filesep);
-    else
+    elseif isempty(cwd)
       cwd = strip(glob([pwd,filesep,'*',filesep,'*',subjs]),'right',filesep);
       if isempty(cwd)
         disp('Could not identify the correct directory')

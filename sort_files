@@ -199,7 +199,7 @@ else
       elif [ ${proj} == "awesome" ] ; then
         scan_names=( "fp" "t1" "rest")
       elif [ ${proj} == "eses" ] ; then
-        scan_names=("rest")
+        scan_names=("rest" "t1")
       else
         echo "******Project directory not previously defined in the script*****"
         echo "Quiting."

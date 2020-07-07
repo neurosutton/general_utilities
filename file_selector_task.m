@@ -8,7 +8,11 @@ rawDir = '';
 switch nargin
     case 2 %Given number and names of tasks and subjs
         for t = 1: length(taskArray)
-            task = char(taskArray(t));
+            if iscell(taskArray)
+                task = char(taskArray(t));
+            else
+                task = taskArray;
+            end
             pth_taskdirs(t).fileDirs = repmat({''},1,length(pth_subjdirs)); %preallocation for possible number of matches
             pth_taskdirs(t).task = task;
             for s = 1:length(pth_subjdirs)
