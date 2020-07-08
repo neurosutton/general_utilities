@@ -238,7 +238,7 @@ else
           #nvols=204
         elif [[ ${scan_name} == "rest" ]] ; then
           findName="rest"
-          nvols=300
+          nvols=150 # absolute minimum of 5 minutes for potential averaging
         elif [[ "${scan_name}" == "triangle" ]] ; then
           findName="Triangle"
           nvols=336
