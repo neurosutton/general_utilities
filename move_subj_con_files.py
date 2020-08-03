@@ -15,7 +15,7 @@ import pandas as pd
 import shutil
 from pathlib import Path
 
-task='priming'
+task='priming_ppi'
 
 if task == 'priming':
     data_dir = '/data/images/priming'
@@ -24,6 +24,16 @@ if task == 'priming':
     # Following result directory name: contrast file, compose a result dictionary
     results_to_grab = {'fp_results_post':['con_0008']}
     #{'priming':['dsw'],'fp_results':['con_0003','con_0004','con_0005','con_0008'], 'fp_results_post':['con_0004','con_0005','con_0008'], 'fp_results_aCompCorr':['con_0004','con_0005','con_0008'], 'fp_resultsArt_aCompCorr_post':['con_0004','con_0005','con_0008'], 'priming_results':['con_0001','con_0003'], 'priming_results_aCompCorr':['con_0001', 'con_0003']}
+  
+elif task == 'priming_ppi':
+    data_dir = '/data/images/priming'
+    analysis_dir = '/data/analysis/brianne/priming/contrasts_preprocThr2_2020'
+    example_subj =  'ip214'
+    # Following result directory name: contrast file, compose a result dictionary
+    dirs = glob.glob(os.path.join(data_dir,example_subj,'ppi*'))
+    dirs = [os.path.basename(d)for d in dirs]
+    cons = len(dirs)*[['con_0001']]
+    results_to_grab = dict(zip(dirs,cons)) 
     
 elif task == 'wlm':
     data_dir = '/mnt/mac/subjects'
