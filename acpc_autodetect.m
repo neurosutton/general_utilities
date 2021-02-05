@@ -54,9 +54,13 @@ for i=1:size(imglist,1)
     %% Decide what kind of scan is being processed
     [projDir scan_type] = fileparts(subjDir);
     substring = {'t1','anat'};
+    substring2 = {'t2','anat'};
     if contains(string(lower(scan_type)), substring) || contains(string(lower(subjImg)), substring)
         anatPath = 'yes';
         template=[spmDir filesep 'canonical/avg152T1.nii'];
+    elseif contains(string(lower(scan_type)), substring2) || contains(string(lower(subjImg)), substring2)
+        anatPath = 'yes';
+        template=[spmDir filesep 'canonical/avg152T2.nii'];
     else
         epiPath = 'yes';
         template=[spmDir filesep 'canonical/EPI.nii']; %avg152T2

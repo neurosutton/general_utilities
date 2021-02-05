@@ -21,14 +21,24 @@ if [[ "$cron_test" == 'yes' ]] ; then
 else
 #Create a dictionary of the directories
 declare -A dir_dict
-dir_dict=(["Legget_ASDX"]="asdx" ["Legget_EXO"]='exobk' ["Legget_Priming"]='priming' ["Legget_TRN"]='trn' ["Legget_AW"]='awesome' ["Bear_ESES"]='eses')
+dir_dict=(["Cornier_RTO"]='rto' ["Legget_ASDX"]="asdx" ["Legget_EXO"]='exobk' ["Legget_Priming"]='priming' ["Legget_TRN"]='trn' ["Legget_AW"]='awesome' ["Legget_SALAD"]='salad' ["Legget_OBD"]='dmxba' ["Hunter_Choline"]='choline' ["Cornier_ARO"]='aging')
 declare -A task_dict
-task_dict=(['asdx']="{'triangle'}" ['exobk']="{'fp_run1' 'fprun2' 'rest' }" ['priming']="{'fp_run1' 'fprun2' 'priming'}" ['trn']="{'triangle'}" ['awesome']="{'oddball' 'fp_run1' 'fp_run2' 'rest'}" ['eses']="{'rest'}")
+task_dict=(['asdx']="{'triangle'}" ['exobk']="{'fp_run1' 'fp_run2' 'rest' }" ['priming']="{'fp_run1' 'fp_run2' 'priming'}" ['trn']="{'triangle'}" ['awesome']="{'oddball' 'fp_run1' 'fp_run2' 'rest'}" ['salad']="{'ddisc_run1' 'ddisc_run2' 'fp_run1' 'fp_run2' 'rest'}" ['eses']="{'rest'}"  ['obd']="{'ddisc_run1' 'ddisc_run2' 'fp_run1' 'fp_run2' 'rest'}" ["choline"]="{'rest'}" ['rto']="{'fp_run1' 'fp_run2' 'rest' 'ddisc_run1' 'ddisc_run2' }" ['aging']="{'fp_run1' 'fp_run2' 'rest' 'ddisc_run1' 'ddisc_run2' }")
 
-dir_dict=(["Bear_ESES"]='eses')
-task_dict=(['eses']="{'rest'}")
+#dir_dict=(["Bear_ESES"]='eses')
+#task_dict=(['eses']="{'rest'}")
 
-mount -t cifs -o username=mruser,password=${pswd},vers=1.0 //140.226.17.61/X ${tmp_mnt}
+mount -t cifs -o username=mruser,password=${pswd},vers=1.0 //bic-server.ucdenver.pvt/X ${tmp_mnt}
+
+# Limit the directories to check
+if [ $# -ge 1 ]; then
+  for d in ${!dir_dict[@]} ; do
+    if grep -qv "$1" <<< "$d" ; then
+      unset dir_dict['${d}']
+    fi
+  done
+  echo "Edited directory array: ${dir_dict[@]}"
+fi
 
 for dk in "${!dir_dict[@]}"; do
   echo 'Checking' ${dk}
@@ -37,79 +47,89 @@ for dk in "${!dir_dict[@]}"; do
 
   #Locate the files on the remote server that have been updated.
   if [ $# -eq 0 ] ; then
-      files=`find ${tmp_mnt}/${dk}* -maxdepth 1 -newermt '48 months ago' -type d`
+      files=`find ${tmp_mnt}/${dk}* -maxdepth 1 -newermt '6 months ago' -type d`
+  elif [ $# -eq 2 ] ; then
+  #Case for identifying a specific subject
+      files=`find ${tmp_mnt}/${dk}*/*${2}* -maxdepth 1 -newermt '60 months ago' -type d`
   else
-      files=`find ${tmp_mnt}/${dk}*/*${1}* -maxdepth 1 -newermt '48 months ago' -type d`
+      files=`find ${tmp_mnt}/${dk}* -maxdepth 1 -newermt '60 months ago' -type d`
   fi
 
   for f in ${files[@]}; do
-      if [ $# -ge 1 ] ; then
 	  # Trim the directory name back to subject level to match original logic for naming conventions.
-	  f=`echo ${f} | rev | cut -d/ -f2- | rev`
+    IFS='/' read -r -a pieces <<< ${f}
+    for p in ${!pieces[@]}; do
+      if grep -q "$dk" <<< "${pieces[$p]}" ; then
+        ix=$(($p+2))
       fi
-   orig=`echo ${f} | rev | cut -d/ -f1 | rev`
-   echo $orig
+    done
+	 subj_dir=`echo ${f} | cut -d/ -f1-${ix}`
+   orig=`echo ${subj_dir} | rev | cut -d/ -f1 | rev`
+  echo "Processing $orig"
+
    if [[ "${orig}" != *"${dk}"* ]] ; then
 	# The conditional is necessary to avoid copying the entire study directory
       timept=`echo ${orig} | cut -d_ -f3`
-      name=`echo ${orig} | cut -d_ -f1-2`
+      if [[ "${debug}" == "yes" ]]; then
+	        # Test that there is not a double digit number or higher for the "timept"
+	        [ ${#timept} -lt 2 ] && echo "${timept} is not a double digit" || echo false
+          # If there are a lot more numbers or no numbers in "timept", then this delimited field was not a timepoint and needs to be disregarded.
+          [ ! -z ${timept} ] && echo "timept variable exists" || echo "timept variable does not exist"
+          [ ${#timept} -gt 2 ] && echo "timept is at least double digit" || echo false
+      fi
+
+      if [[ -z "${timept}" ]] ; then
+        name=`echo ${orig} | cut -d_ -f1`
+        timept=`echo ${orig} | cut -d_ -f2`
+      else
+        name=`echo ${orig} | cut -d_ -f1-2`
+      fi
+
+      # Edge case
+      if [[ -z "${name}" ]] ; then
+        name=`echo ${orig}`
+      fi
+
       rplc=`echo ${name,,} | sed -e 's,_,'',g'` # Get the lowercase prefix to combine with the timepoint
 
-      if [[ "${debug}" == "yes" ]]; then
-	  # Test that there is not a double digit number or higher for the "timept"
-	  [ ${#timept} -lt 2 ] && echo "${timept} is not a double digit" || echo false
-      fi
-
-
-# Get the number of folders already matching the "new" scan name.
-# If there are matches, then copying will not be done to avoid messing with the naming scheme or overwriting already aligned or processed files.
-      check1=`ls -d ${dest_dir}/${name}*/* 2>/dev/null | wc | awk '{print $1}'`
-      check2=`ls -d ${dest_dir}/${name,,}*/* 2>/dev/null | wc | awk '{print $1}'`
-      ls -d ${dest_dir}/${name}*/* 2>/dev/null
-      ls -d ${dest_dir}/${name,,}*/* 2>/dev/null
-
       if [[ ! -z "${timept}" && ${#timept} -lt 2 ]] ; then
-	  # Not all studies may have timepoints. Provide a renaming scheme for those that do
-	  name=`echo ${orig} | cut -d_ -f1-3` # The timepoint needs to be added back into the name for the checks, b/c the delimited field was a timepoint
-	  check3=`ls -d ${dest_dir}/${rplc}_${timept}*/* 2>/dev/null | wc | awk '{print $1}'`
-	  ls -d ${dest_dir}/${rplc}_${timept}*/* 2>/dev/null
+        # Not all studies may have timepoints. Provide a renaming scheme for those that do
+        name=${rplc}_${timept} # The timepoint needs to be added back into the name for the checks, b/c the delimited field was a timepoint
+        check1=`ls -d ${dest_dir}/${name}/* 2>/dev/null | wc | awk '{print $1}'`
+        ls -d ${dest_dir}/${name}/* 2>/dev/null
       else
-	  # If there are a lot more numbers or no numbers in "timept", then this delimited field was not a timepoint and needs to be disregarded.
-	  if [[ "${debug}" == "yes" ]]; then
-	      [ ! -z ${timept} ] && echo "timept variable exists" || echo "timept variable does not exist"
-	      [ ${#timept} -gt 2 ] && echo "timept is at least double digit" || echo false
-	  fi
-	  check3=`ls -d ${dest_dir}/${rplc}*/* 2>/dev/null | wc | awk '{print $1}'`
-	  ls -d ${dest_dir}/${rplc}*/* 2>/dev/null
+        check1=`ls -d ${dest_dir}/${rplc}*/* 2>/dev/null | wc | awk '{print $1}'`
+        ls -d ${dest_dir}/${rplc}*/* 2>/dev/null
       fi
+
+      # Get the number of folders already matching the "new" scan name.
+      # If there are matches, then copying will not be done to avoid messing with the naming scheme or overwriting already aligned or processed files.
+      check2=`ls -d ${dest_dir}/${name}*/* 2>/dev/null | wc | awk '{print $1}'` # Should not be the case
+      check3=`ls -d ${dest_dir}/${name^^}*/* 2>/dev/null | wc | awk '{print $1}'` # Should not be the case
+      ls -d ${dest_dir}/${name}*/* 2>/dev/null
+      ls -d ${dest_dir}/${name^^}*/* 2>/dev/null
 
       checks=$(( ${check1} + ${check2} + ${check3} ))
-	  if [[ "${debug}" == "yes" ]]; then
-	      echo "${check1}+${check2}+${check3}=${checks}"
-	  fi
+      if [[ "${debug}" == "yes" ]]; then
+          echo "${check1}+${check2}+${check3}=${checks}"
+      fi
 
       if [[ "${checks}" -ge 1 ]] ; then
-	  echo "${f} already copied : checks x's ${checks}"
+	      echo "${subj_dir} already copied : checks x's ${checks}"
       else
-	  echo "Copying ${f} may take a while. Please be patient."
-	  rsync -rzv ${f} ${dest_dir}  # Use rsync to reduce accidental re-copying.
-
-	  if [[ ${orig} != ${name} ]] ; then
-	      mv ${dest_dir}/${orig} ${dest_dir}/${name} # Rename the directory according to new convention
-	  elif [[ ${orig} == ${name} ]] ; then
-	      echo "Naming all set"
-	  fi
-
-	  echo ${name} ${dt} 'manual' >> ${dest_dir}/cron_trxfr.txt
-	  chmod 775 -R ${dest_dir}/${name}
+	      echo "Copying ${subj_dir} to ${dest_dir}/${name} may take a while. Please be patient."
+	  rsync -rzv ${f} ${dest_dir}/${name}  # Use rsync to reduce accidental re-copying.
+    chmod 775 -R ${dest_dir}/${name}
 	  chgrp users -R ${dest_dir}/${name}
-	  chmod g+s ${dest_dir}/${name}
+
+	  echo ${name} ${dt} 'auto' >> ${dest_dir}/cron_trxfr.txt
+
       fi
       echo ${name} >> ${dest_dir}/subj_to_proc.txt # Send the new, lowercase name to a text file to make the next process easier.
     fi
   done
 done
-umount -l ${tmp_mnt}
+#umount -l ${tmp_mnt}
 
 echo "> Copying from server complete."
 fi

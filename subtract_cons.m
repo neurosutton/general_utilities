@@ -5,8 +5,8 @@ group1_size = size(group1);
 group1_numb = group1_size(1);
 group1_length = group1_size(2);
 group2  = spm_select([group1_numb,group1_numb],'nii','Select second group' );
-newExt = 'preIntMinusPostInt';
-newExt = '_postMinusBaseline';
+newExt = '_FastedMinusFed';
+newExt = '_baselineMinusPost';
 
 for sub=1:group1_numb
     [pth file ext] = fileparts(group1(sub,:));

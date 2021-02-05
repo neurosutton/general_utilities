@@ -21,9 +21,9 @@ if [[ "$cron_test" == 'yes' ]] ; then
 else
 #Create a dictionary of the directories
 declare -A dir_dict
-dir_dict=(["Legget_ASDX"]="asdx" ["Legget_EXO"]='exobk' ["Legget_Priming"]='priming' ["Legget_TRN"]='trn' ["Legget_AW"]='awesome' ["Bear_ESES"]='eses')
+dir_dict=(["Legget_ASDX"]="asdx" ["Legget_EXO"]='exobk' ["Legget_Priming"]='priming' ["Legget_TRN"]='trn' ["Legget_AW"]='awesome' ["Legget_SALAD"]='salad' ["Bear_ESES"]='eses' ["Hunter_Choline"]='choline' ["Cornier_RTO"]='rto')
 declare -A task_dict
-task_dict=(['asdx']="{'triangle'}" ['exobk']="{'fp_run1' 'fprun2' 'rest' }" ['priming']="{'fp_run1' 'fprun2' 'priming'}" ['trn']="{'triangle'}" ['awesome']="{'oddball' 'fp_run1' 'fp_run2' 'rest'} "['eses']="{'rest'}")
+task_dict=(['asdx']="{'triangle' 'rest'}" ['exobk']="{'fp_run1' 'fp_run2' 'rest' }" ['priming']="{'fp_run1' 'fprun2' 'priming'}" ['trn']="{'triangle' 'rest'}" ['awesome']="{'oddball' 'fp_run1' 'fp_run2' 'rest'} " ['salad']="{'rest' 'ddisc_run1' 'ddisc_run2' 'fp_run1' 'fp_run2'}" ['dmxba']="{'rest' 'fp_run1' 'fp_run2'}" ['eses']="{'rest'}" ['choline']="{'rest'}" ['rto']="{'fp_run1' 'fp_run2' 'rest' 'ddisc_run1' 'ddisc_run2' }")
 
 #dir_dict=(["Legget_AW"]='awesome')
 #task_dict=(['awesome']="{'oddball' 'fp_run1' 'fp_run2' 'rest'}")

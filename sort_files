@@ -179,8 +179,12 @@ else
     #Sort the gzip files
     if [ -z ${task} ] ; then
       if [ ${proj} == "exobk" ] ; then
-        scan_names=("ddisc" "fp" "t1" "rest")
+        scan_names=("ddisc" "fp" "t1" "rest" "asl")
+      elif [ ${proj} == "exobk" ] ; then
+        scan_names=("ddisc" "fp" "t1" "rest" "asl")
       elif [ ${proj} == "exw" ] ; then
+        scan_names=("ddisc" "rest" "fp" "t1" "asl")
+      elif [ ${proj} == "rto" ] ; then
         scan_names=("ddisc" "rest" "fp" "t1" "asl")
       elif [ ${proj} == "priming" ] ; then
         scan_names=("t1" "rest" "fp" "asl" "priming")
@@ -191,15 +195,21 @@ else
       elif [ ${proj} == "asl_testing" ]; then
         scan_names=("asl" "t1")
       elif [ ${proj} == "asdx" ] || [ ${proj} == "trn" ] ; then
-        scan_names=("triangle" "t1" "rest")
+        scan_names=("triangle" "t1" "rest" "asl")
       elif [ ${proj} == "ross_bch" ] ; then
         scan_names=("t1" "t2" ) #"rest")
       elif [ ${proj} == "nicotine" ] ; then
 	scan_names=("t1" "rest" "craving" "asl" "rel_cbf")
       elif [ ${proj} == "awesome" ] ; then
         scan_names=( "fp" "t1" "rest")
+      elif [ ${proj} == "salad" ] ; then
+	scan_names=("ddisc" "fp" "t1" "rest" "asl")
+      elif [ ${proj} == "dmxba" ] ; then
+	scan_names=( "fp" "t1" "rest" "asl")
       elif [ ${proj} == "eses" ] ; then
         scan_names=("rest" "t1")
+      elif [ ${proj} == "choline" ] ; then
+        scan_names=("rest" "t1" "t2")
       else
         echo "******Project directory not previously defined in the script*****"
         echo "Quiting."
@@ -230,6 +240,10 @@ else
           # to check that it is only copying complete runs.
         elif [[ ${scan_name} == "t1" ]] ; then
           findName="*mprage*"
+          #findName="*SPGR*"
+          nvols=1
+       elif [[ ${scan_name} == "t2" ]] ; then
+          findName="*space*"
           #findName="*SPGR*"
           nvols=1
         elif [[ ${scan_name} == "fp" ]] ; then
@@ -294,12 +308,20 @@ else
                   mkdir ${subj_dir}/${scan_name}
                 fi
 
+		# If you find an error in copying, check whether the file is zipped! Must be zipped for this script.
                 mvFile=`echo ${raw_dir}/${mvFile}`
 		base=`echo ${mvFile} | awk -F '.nii.gz' '{for (i=1; i<=NF; i++) printf("%s", $i)}'`
                 dt=`echo ${mvFile} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
-                series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+                if [[ ${dt} == *"i"* ]]; then
+                    dt=`echo ${mvFile} | rev |  cut -d. -f2- | cut -d_ -f2 | rev |cut -d. -f1| cut -c1-8`
+                    series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f3 | rev`
+                else
+                    series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+                fi
+                
                 ext=`echo ${mvFile} | rev | cut -d. -f1-2 | rev` #can be nii or nii.gz
                 #macdt=`echo ${mvFile} | rev |  cut -d. -f2- | rev | cut -d_ -f1`
+		echo "dt=${dt}   series=${series}  ext=${ext}"
 
                 cp ${mvFile} ${subj_dir}/${scan_name}/${name,,}_${scan_name}_${series}_${dt}.${ext}
 		cp ${base}.json ${subj_dir}/${scan_name}
@@ -335,8 +357,13 @@ else
 		  #mac  dt=`echo ${specName} | rev |  cut -d. -f2- |cut -d/ -f1 | rev|  cut -d_ -f1`
 
 		  dt=`echo ${specName} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
+            if [[ ${dt} == *"i"* ]]; then
+                dt=`echo ${specName} | rev |  cut -d. -f2- | cut -d_ -f2 | rev |cut -d. -f1| cut -c1-8`
+                series=`echo ${specName}| rev |  cut -d. -f2- | cut -d_ -f3 | rev`
+            else
+                series=`echo ${specName}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+            fi
 		  ext=`echo ${specName} | rev | cut -c1-7 | rev | cut -d. -f2-` #b/c some of the images have . maddeningly sprinkled throughout
-		  series=`echo ${specName}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
 
 		  cp ${specName} ${subj_dir}/${scan_name}/${name,,}_${scan_name}_${series}_${dt}.${ext}
 		  gunzip ${subj_dir}/${scan_name}/${name,,}_${scan_name}_${series}_${dt}.${ext}
@@ -354,7 +381,7 @@ else
               if  [[ ${mvFile} != "" ]] ; then
                 #echo "Checking that ${nvols} in ${mvFile}"
                 nvol_mvFile=`fslnvols ${mvFile}`
-                if [[ ${nvols} -ne ${nvol_mvFile} ]] ; then
+                if [[ ${nvols} -gt ${nvol_mvFile} ]] ; then
                   echo "${mvFile} has ${nvol_mvFile} volumes"
                   mvFile="" #Don't want to pull this one forward, because it doesn't have the right number of volumes (and may not be the sequence that is expected.
                   echo "Double-check that the script is looking for the correct number of volumes."
@@ -380,7 +407,12 @@ else
                     fi
 		    base=`echo ${mvFile} | awk -F '.nii.gz' '{for (i=1; i<=NF; i++) printf("%s", $i)}'`
                     dt=`echo ${mvFile} | rev |  cut -d. -f2- | cut -d_ -f1 | rev |cut -d. -f1| cut -c1-8`
-                    series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+                    if [[ ${dt} == *"i"* ]]; then
+                        dt=`echo ${mvFile} | rev |  cut -d. -f2- | cut -d_ -f2 | rev |cut -d. -f1| cut -c1-8`
+                        series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f3 | rev`
+                    else
+                        series=`echo ${mvFile}| rev |  cut -d. -f2- | cut -d_ -f2 | rev`
+                    fi
                     ext=`echo ${mvFile} | cut -d. -f2-` #can be nii or nii.gz
                     cp ${mvFile} ${subj_dir}/${scan_name}_run${n}/${name,,}_${scan_name}run${n}_${series}_${dt}.${ext}
 		    cp ${base}.json ${subj_dir}/${scan_name}_run${n}/.

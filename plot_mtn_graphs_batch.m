@@ -20,8 +20,8 @@ cmap = [1 0 0
 
 
 for f=1:size(input_files,1)
-    [subj_dir, rp_filename, ~] = fileparts(input_files(f,:));
-    rp =spm_load(input_files(f,:));
+    [subj_dir, rp_filename, ~] = fileparts(strtrim(input_files(f,:)));
+    rp =spm_load(strtrim(input_files(f,:)));
     figure;
     
     %% Translation
