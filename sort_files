@@ -178,14 +178,8 @@ else
 
     #Sort the gzip files
     if [ -z ${task} ] ; then
-      if [ ${proj} == "exobk" ] ; then
+      if [[ ${proj} == "exobk" || ${proj} == "aging" || ${proj} == "exw" || ${proj} == "dmxba" || ${proj} == "rto" || ${proj} == "salad" || ${proj} == "sentry" ]] ; then
         scan_names=("ddisc" "fp" "t1" "rest" "asl")
-      elif [ ${proj} == "exobk" ] ; then
-        scan_names=("ddisc" "fp" "t1" "rest" "asl")
-      elif [ ${proj} == "exw" ] ; then
-        scan_names=("ddisc" "rest" "fp" "t1" "asl")
-      elif [ ${proj} == "rto" ] ; then
-        scan_names=("ddisc" "rest" "fp" "t1" "asl")
       elif [ ${proj} == "priming" ] ; then
         scan_names=("t1" "rest" "fp" "asl" "priming")
       elif [ ${proj} == "eats_shomaker" ] ; then
@@ -202,10 +196,6 @@ else
 	scan_names=("t1" "rest" "craving" "asl" "rel_cbf")
       elif [ ${proj} == "awesome" ] ; then
         scan_names=( "fp" "t1" "rest")
-      elif [ ${proj} == "salad" ] ; then
-	scan_names=("ddisc" "fp" "t1" "rest" "asl")
-      elif [ ${proj} == "dmxba" ] ; then
-	scan_names=( "fp" "t1" "rest" "asl")
       elif [ ${proj} == "eses" ] ; then
         scan_names=("rest" "t1")
       elif [ ${proj} == "choline" ] ; then

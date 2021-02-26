@@ -15,7 +15,7 @@ import pandas as pd
 import shutil
 from pathlib import Path
 
-task='priming'
+task='aging'
 
 if task == 'priming':
     data_dir = '/data/images/priming'
@@ -73,6 +73,13 @@ elif task == 'awesome':
     data_dir = '/data/images/priming'
     analysis_dir = '/data/analysis/brianne/awesome/food_pics'
     results_to_grab = {'fp_results':['con_0003','con_0005','con_0006','con_0008']}
+
+elif task =='aging':
+    data_dir = r'Z:\data\images\aging'
+    analysis_dir = r'Z:\data\analysis\brianne\aging\contrasts_2021'
+    # Following result directory name: contrast file, compose a result dictionary
+    results_to_grab = {'fp_results':['con_0005']}
+
 
 ## Main script ##
 for destination in results_to_grab.keys():

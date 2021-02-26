@@ -129,7 +129,7 @@ for dk in "${!dir_dict[@]}"; do
     fi
   done
 done
-#umount -l ${tmp_mnt}
+umount -l ${tmp_mnt}
 
 echo "> Copying from server complete."
 fi
